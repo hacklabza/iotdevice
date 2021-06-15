@@ -1,0 +1,4 @@
+adafruit-ampy==1.1.0
+click==8.0.1
+pyserial==3.5
+python-dotenv==0.17.1

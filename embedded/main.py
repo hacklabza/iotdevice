@@ -2,11 +2,23 @@ import json
 import network
 import socket
 import time
+import upip
 
 
 def load_config():
     with open('config/config.json', 'r') as config_file:
         return json.loads(config_file.read())
+
+
+def install_deps():
+    with open('requirements.upip.txt', 'r') as requirements_file:
+        for requirement in requirements_file:
+            requirement = requirement.replace('\n', '')
+            if requirement:
+                print(
+                    'Installing {requirement}'.format(requirement=requirement)
+                )
+                upip.install(requirement)
 
 
 def connect_wifi():
@@ -22,7 +34,7 @@ def connect_wifi():
                 time.sleep(10)
                 print('Connection attempt {count}/5'.format(count=i + 1))
                 if i == 4:
-                    print('Connection faile')
+                    print('Connection failed')
             else:
                 ip_address = sta_if.ifconfig()[0]
                 print(
@@ -36,6 +48,13 @@ def connect_wifi():
 
 
 def simple_http_server():
+    server_ip = '0.0.0.0'
+    server_port = 80
+    print(
+        'Starting HTTP Server at {server_ip}:{server_port}'.format(
+            server_ip=server_ip, server_port=server_port
+        )
+    )
     address = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
     http_socket = socket.socket()
     http_socket.bind(address)
@@ -43,19 +62,12 @@ def simple_http_server():
 
     while True:
         connection, _ = http_socket.accept()
-        # connection_file = connection.makefile('rwb', 0)
-        # while True:
-        #     line = connection_file.readline()
-        #     if not line or line == b'\r\n':
-        #         break
-        # rows = ['<tr><td>%s</td><td>%d</td></tr>' %
-        #         (str(p), p.value()) for p in pins]
-        response = 'Hello World!'
         connection.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
-        connection.send(response)
+        connection.send('Hello World!')
         connection.close()
 
 
 if __name__ == '__main__':
     if connect_wifi():
-        simple_http_server()
+        # simple_http_server()
+        install_deps()

@@ -28,10 +28,10 @@ cp embedded/config/config.example.json embedded/config/config.json
 vim embedded/config/config.json
 
 # Check the file system on your board
-ampy --port /dev/tty.usbserial-01A7B50C ls
+ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 ls
 
 # Copy the files over to your board
-ampy --port /dev/tty.usbserial-01A7B50C put embedded/boot.py
-ampy --port /dev/tty.usbserial-01A7B50C put embedded/main.py
-ampy --port /dev/tty.usbserial-01A7B50C put embedded/config/config.json
+ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/boot.py
+ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/main.py
+ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/config/config.json
 ```

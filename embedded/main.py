@@ -55,20 +55,44 @@ def connect_wifi(wifi_config):
                 )
                 break
 
+    led_pin = machine.Signal(machine.Pin(2, machine.Pin.OUT), invert=True)
+    led_pin.on()
+
     return wifi.isconnected()
 
 
 def connect_mqtt(mqtt_config):
     mqtt = MQTTClient(mqtt_config['client_id'], mqtt_config['host'])
     mqtt.connect()
+    log_message(
+        mqtt,
+        'Connected to MQTT at {host}'.format(host=mqtt_config['host'])
+    )
     return mqtt
+
+
+def publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message):
+    try:
+        mqtt.publish(mqtt_queue, message)
+    except OSError:
+        connect_mqtt(mqtt_config)
+        mqtt.publish(mqtt_queue, message)
 
 
 def log_message(mqtt, message):
     mqtt_config = CONFIG['mqtt']
     mqtt_queue = 'logs/{client_id}'.format(client_id=mqtt_config['client_id'])
-    mqtt.publish(mqtt_queue, message)
+    publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message)
     print(message)
+
+
+def log_status(mqtt, identifier, status):
+    mqtt_config = CONFIG['mqtt']
+    mqtt_queue = 'status/{client_id}/{identifier}'.format(
+        client_id=mqtt_config['client_id'],
+        identifier=identifier
+    )
+    publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, status)
 
 
 def run(mqtt, pin_config):
@@ -77,10 +101,13 @@ def run(mqtt, pin_config):
     for pin in pin_config:
 
         # Setup the initial pin as in or out based on the config
-        pins[pin['identifier']] = machine.Signal(machine.Pin(
-            pin['pin_number'],
-            machine.Pin.IN if pin['read'] else machine.Pin.OUT
-        ), invert=True)
+        if pin['analog']:
+            pins[pin['identifier']] = machine.ADC(pin['pin_number'])
+        else:
+            pins[pin['identifier']] = machine.Signal(machine.Pin(
+                pin['pin_number'],
+                machine.Pin.IN if pin['read'] else machine.Pin.OUT
+            ), invert=True)
 
     while True:
         for pin in pin_config:
@@ -98,10 +125,17 @@ def run(mqtt, pin_config):
 
                     # Determine if the iput value is a return value from a
                     # previous action or set the static value
-                    if value in RULE_VALUES:
-                        rule_params[key] = RULE_VALUES.get(value, value)
+                    if type(value) == list:
+                        values = []
+                        for v in value:
+                            values.append(RULE_VALUES.get(v))
+                        rule_params[key] = all(values)
+
                     else:
-                        rule_params[key] = RULE_VALUES.get(key, value)
+                        if value in RULE_VALUES:
+                            rule_params[key] = RULE_VALUES.get(value)
+                        else:
+                            rule_params[key] = RULE_VALUES.get(key, value)
 
                 log_message(
                     mqtt,
@@ -121,6 +155,9 @@ def run(mqtt, pin_config):
                         action=rule['action'],
                         output=RULE_VALUES[pin['identifier']]
                     )
+                )
+                log_status(
+                    mqtt, pin['identifier'], str(RULE_VALUES[pin['identifier']])
                 )
 
         time.sleep(CONFIG['global']['process_interval'])

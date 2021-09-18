@@ -36,6 +36,7 @@ ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/config/config.json c
 ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/config/requirements.upip.txt config/requirements.upip.txt
 
 # Copy the executable files over to your board
-ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/boot.py
+ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/rules.py
 ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/main.py
+ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/boot.py
 ```

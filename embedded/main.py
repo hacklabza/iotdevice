@@ -6,6 +6,8 @@ import upip
 
 from umqtt.simple import MQTTClient
 
+import rules
+
 
 CONFIG = {}
 RULE_VALUES = {}
@@ -62,23 +64,15 @@ def connect_mqtt(mqtt_config):
     return mqtt
 
 
-def read_sample(pin, rule, **kwargs):
-    readings = []
-    for _ in range(kwargs.get('sample_size', 0)):
-        print(pin.value())
-        readings.append(pin.value())
-        time.sleep(1)
-    return all(readings)
-
-
-def toggle(pin, rule, **kwargs):
-    off = kwargs.get('off')
-    pin.off() if off else pin.on()
-    return pin.value()
+def log_message(mqtt, message):
+    mqtt_config = CONFIG['mqtt']
+    mqtt_queue = 'logs/{client_id}'.format(client_id=mqtt_config['client_id'])
+    mqtt.publish(mqtt_queue, message)
+    print(message)
 
 
 def run(mqtt, pin_config):
-    print('Started...')
+    log_message(mqtt, 'Started')
     pins = {}
     for pin in pin_config:
 
@@ -89,14 +83,13 @@ def run(mqtt, pin_config):
         ), invert=True)
 
     while True:
-
         for pin in pin_config:
 
             # Iterate over the rules and run them
             for rule in pin['rules']:
 
                 # Get the rule action method
-                action = globals()[rule['action']]
+                action = getattr(rules, rule['action'])
 
                 # Retrieve method parms including return values from previous
                 # actions
@@ -110,7 +103,8 @@ def run(mqtt, pin_config):
                     else:
                         rule_params[key] = RULE_VALUES.get(key, value)
 
-                print(
+                log_message(
+                    mqtt,
                     'Running rule: {action} with input: {input}'.format(
                         action=rule['action'], input=str(rule_params)
                     )
@@ -121,14 +115,15 @@ def run(mqtt, pin_config):
                     pins[pin['identifier']], rule, **rule_params
                 )
 
-                print(
+                log_message(
+                    mqtt,
                     'Completed rule: {action} with output: {output}'.format(
                         action=rule['action'],
                         output=RULE_VALUES[pin['identifier']]
                     )
                 )
 
-        time.sleep(15)
+        time.sleep(CONFIG['global']['process_interval'])
 
 
 if __name__ == '__main__':

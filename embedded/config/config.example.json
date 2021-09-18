@@ -11,6 +11,9 @@
         "password": null,
         "ssl_enabled": false
     },
+    "global": {
+        "process_interval": 15
+    },
     "pins": [
         {
             "pin_number": 5,
@@ -20,7 +23,7 @@
             "rules": [
                 {
                     "description": "Sample the output 10 times",
-                    "action": "read_sample",
+                    "action": "read_bool_sample",
                     "input": {
                         "sample_size": 5
                     }

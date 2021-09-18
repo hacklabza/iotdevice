@@ -20,7 +20,7 @@ pip install -r requirements.txt
 esptool.py --chip esp8266 --port /dev/tty.usbserial-01A7B50C erase_flash
 esptool.py --port /dev/tty.usbserial-01A7B50C --baud 460800 write_flash --flash_size=detect 0 ~/Downloads/esp8266-20210418-v1.15.bin
 
-# Check  that you get a micropython REPL (OSX)
+# Check  that you get a micropython REPL (OSX) - ctrl+a k y to kill session
 screen /dev/tty.usbserial-01A7B50C 115200
 
 # Copy the config example and populate it
@@ -30,8 +30,12 @@ vim embedded/config/config.json
 # Check the file system on your board
 ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 ls
 
-# Copy the files over to your board
+# Copy the config files over to your board
+ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 mkdir config/
+ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/config/config.json config/config.json
+ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/config/requirements.upip.txt config/requirements.upip.txt
+
+# Copy the executable files over to your board
 ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/boot.py
 ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/main.py
-ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/config/config.json
 ```

@@ -1,6 +1,46 @@
 {
-    "network": {
-        "essid": "",
-        "password": ""
-    }
+    "wifi": {
+        "essid": "********",
+        "password": "********",
+        "retry_count": 10
+    },
+    "mqtt": {
+        "client_id": "my-smartgarden",
+        "host": "192.168.1.3",
+        "username": null,
+        "password": null,
+        "ssl_enabled": false
+    },
+    "pins": [
+        {
+            "pin_number": 5,
+            "name": "Soil Moisture Sensor",
+            "identifier": "soil_moisture_sensor",
+            "read": true,
+            "rules": [
+                {
+                    "description": "Sample the output 10 times",
+                    "action": "read_sample",
+                    "input": {
+                        "sample_size": 5
+                    }
+                }
+            ]
+        },
+        {
+            "pin_number": 4,
+            "name": "Solenid Relay",
+            "identifier": "solenoid_relay",
+            "read": false,
+            "rules": [
+                {
+                    "description": "Switch on if soil is dry",
+                    "action": "toggle",
+                    "input": {
+                        "off": "soil_moisture_sensor"
+                    }
+                }
+            ]
+        }
+    ]
 }

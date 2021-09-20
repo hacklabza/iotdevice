@@ -1,5 +1,6 @@
 import json
 import network
+import ntptime
 import machine
 import time
 import upip
@@ -43,7 +44,7 @@ def connect_wifi(wifi_config):
                         count=i + 1, retry_count=wifi_config['retry_count']
                     )
                 )
-                time.sleep(10)
+                time.sleep(5)
                 if i == wifi_config['retry_count'] - 1:
                     print('Connection failed')
             else:
@@ -53,12 +54,27 @@ def connect_wifi(wifi_config):
                         essid=essid, ip_address=ip_address
                     )
                 )
+
+                led_pin = machine.Signal(machine.Pin(2, machine.Pin.OUT), invert=True)
+                led_pin.on()
+
                 break
 
-    led_pin = machine.Signal(machine.Pin(2, machine.Pin.OUT), invert=True)
-    led_pin.on()
-
     return wifi.isconnected()
+
+
+def set_time(mqtt, time_config):
+    ntptime.host = time_config['server']
+    try:
+        ntptime.settime()
+    except OSError:
+        time.sleep(2)
+        ntptime.settime()
+
+    log_message(
+        mqtt,
+        'Local time set to {now}'.format(now=time.localtime())
+    )
 
 
 def connect_mqtt(mqtt_config):
@@ -100,14 +116,20 @@ def run(mqtt, pin_config):
     pins = {}
     for pin in pin_config:
 
-        # Setup the initial pin as in or out based on the config
-        if pin['analog']:
-            pins[pin['identifier']] = machine.ADC(pin['pin_number'])
+        # Ignore pin configs which don't have assigned pins, these are pin-less
+        # rules
+        if pin['pin_number']:
+
+            # Setup the initial pin as in or out based on the config
+            if pin['analog']:
+                pins[pin['identifier']] = machine.ADC(pin['pin_number'])
+            else:
+                pins[pin['identifier']] = machine.Signal(machine.Pin(
+                    pin['pin_number'],
+                    machine.Pin.IN if pin['read'] else machine.Pin.OUT
+                ), invert=True)
         else:
-            pins[pin['identifier']] = machine.Signal(machine.Pin(
-                pin['pin_number'],
-                machine.Pin.IN if pin['read'] else machine.Pin.OUT
-            ), invert=True)
+            pins[pin['identifier']] = None
 
     while True:
         for pin in pin_config:
@@ -128,7 +150,7 @@ def run(mqtt, pin_config):
                     if type(value) == list:
                         values = []
                         for v in value:
-                            values.append(RULE_VALUES.get(v))
+                            values.append(RULE_VALUES.get(v, False))
                         rule_params[key] = all(values)
 
                     else:
@@ -160,7 +182,7 @@ def run(mqtt, pin_config):
                     mqtt, pin['identifier'], str(RULE_VALUES[pin['identifier']])
                 )
 
-        time.sleep(CONFIG['global']['process_interval'])
+        time.sleep(CONFIG['main']['process_interval'])
 
 
 if __name__ == '__main__':
@@ -177,8 +199,10 @@ if __name__ == '__main__':
         install_deps()
 
         # Connects to the configured mqtt queue
-        mqtt_config = CONFIG['mqtt']
-        mqtt = connect_mqtt(mqtt_config)
+        mqtt = connect_mqtt(CONFIG['mqtt'])
+
+        # Set the local time
+        set_time(mqtt, CONFIG['time'])
 
         # Get the pin config and run the main method
         pin_config = CONFIG['pins']

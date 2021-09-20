@@ -5,16 +5,35 @@
         "retry_count": 10
     },
     "mqtt": {
-        "client_id": "qoda-iotdevice-smartgarden",
-        "host": "192.168.50.103",
+        "client_id": "my-smartgarden",
+        "host": "192.168.1.5",
         "username": null,
         "password": null,
         "ssl_enabled": false
     },
-    "global": {
+    "main": {
         "process_interval": 15
     },
+    "time": {
+        "server": "za.pool.ntp.org"
+    },
     "pins": [
+        {
+            "pin_number": null,
+            "name": "Day Timer",
+            "identifier": "day_timer",
+            "analog": false,
+            "read": true,
+            "rules": [
+                {
+                    "action": "timer",
+                    "input": {
+                        "start_time": "07:00",
+                        "end_time": "15:00"
+                    }
+                }
+            ]
+        },
         {
             "pin_number": 5,
             "name": "Soil Moisture Sensor",
@@ -25,6 +44,7 @@
                 {
                     "action": "read_bool_sample",
                     "input": {
+                        "reverse": true,
                         "sample_size": 5
                     }
                 }
@@ -40,7 +60,7 @@
                 {
                     "action": "toggle",
                     "input": {
-                        "off": "soil_moisture_sensor"
+                        "on": ["soil_moisture_sensor", "day_timer"]
                     }
                 }
             ]

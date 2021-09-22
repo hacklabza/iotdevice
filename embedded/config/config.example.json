@@ -29,7 +29,22 @@
                     "action": "timer",
                     "input": {
                         "start_time": "07:00",
-                        "end_time": "15:00"
+                        "end_time": "17:00"
+                    }
+                }
+            ]
+        },
+        {
+            "pin_number": null,
+            "name": "MQTT Switch On",
+            "identifier": "mqtt_switch_on",
+            "analog": false,
+            "read": true,
+            "rules": [
+                {
+                    "action": "mqtt_toggle",
+                    "input": {
+                        "queue": "iot-devices/my-smartgarden/toggle"
                     }
                 }
             ]
@@ -60,7 +75,15 @@
                 {
                     "action": "toggle",
                     "input": {
-                        "on": ["soil_moisture_sensor", "day_timer"]
+                        "on": [
+                            [
+                                "day_timer",
+                                "soil_moisture_sensor"
+                            ],
+                            [
+                                "mqtt_switch_on"
+                            ]
+                        ]
                     }
                 }
             ]

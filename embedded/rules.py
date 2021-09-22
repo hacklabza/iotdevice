@@ -1,6 +1,15 @@
 import time
 
 
+MQTT_SUB_MSG = {}
+
+
+def get_mqtt_msg(topic, msg):
+    global MQTT_SUB_MSG
+    if topic and msg:
+        MQTT_SUB_MSG[str(topic.decode('utf-8'))] = str(msg.decode('utf-8'))
+
+
 def read(pin, rule, **kwargs):
     reverse = kwargs.get('reverse', False)
     if reverse:
@@ -71,6 +80,17 @@ def toggle(pin, rule, **kwargs):
     on = kwargs.get('on')
     pin.on() if on else pin.off()
     return pin.value()
+
+
+def mqtt_toggle(pin, rule, **kwargs):
+    mqtt = kwargs.get('mqtt')
+    queue = kwargs.get('queue')
+
+    mqtt.set_callback(get_mqtt_msg)
+    mqtt.subscribe(queue)
+    mqtt.check_msg()
+
+    return int(MQTT_SUB_MSG.get(queue, 0))
 
 
 def timer(pin, rule, **kwargs):

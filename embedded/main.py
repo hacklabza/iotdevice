@@ -12,6 +12,7 @@ import rules
 
 CONFIG = {}
 RULE_VALUES = {}
+MQTT_SUB_MSG = {}
 
 
 def load_config():
@@ -97,14 +98,16 @@ def publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message):
 
 def log_message(mqtt, message):
     mqtt_config = CONFIG['mqtt']
-    mqtt_queue = 'logs/{client_id}'.format(client_id=mqtt_config['client_id'])
+    mqtt_queue = 'iot-devices/{client_id}/logs'.format(
+        client_id=mqtt_config['client_id']
+    )
     publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message)
     print(message)
 
 
 def log_status(mqtt, identifier, status):
     mqtt_config = CONFIG['mqtt']
-    mqtt_queue = 'status/{client_id}/{identifier}'.format(
+    mqtt_queue = 'iot-devices/{client_id}/status/{identifier}'.format(
         client_id=mqtt_config['client_id'],
         identifier=identifier
     )
@@ -145,19 +148,34 @@ def run(mqtt, pin_config):
                 rule_params = {}
                 for key, value in rule['input'].items():
 
-                    # Determine if the iput value is a return value from a
+                    # Determine if the input value is a return value from a
                     # previous action or set the static value
                     if type(value) == list:
+                        value_items = value
+                        operator = 'and'
                         values = []
-                        for v in value:
-                            values.append(RULE_VALUES.get(v, False))
-                        rule_params[key] = all(values)
+                        for value_item in value_items:
+                            if type(value_item) == list:
+                                operator = 'or'
+                                split_values = []
+                                for v in value_item:
+                                    split_values.append(
+                                        RULE_VALUES[v]
+                                    )
+                                values.append(all(split_values))
+                            else:
+                                values.append(RULE_VALUES[value_item])
+
+                        if operator == 'or':
+                            rule_params[key] = any(values)
+                        else:
+                            rule_params[key] = all(values)
 
                     else:
                         if value in RULE_VALUES:
-                            rule_params[key] = RULE_VALUES.get(value)
+                            rule_params[key] = RULE_VALUES[value]
                         else:
-                            rule_params[key] = RULE_VALUES.get(key, value)
+                            rule_params[key] = value
 
                 log_message(
                     mqtt,
@@ -165,6 +183,9 @@ def run(mqtt, pin_config):
                         action=rule['action'], input=str(rule_params)
                     )
                 )
+
+                # Add mqtt to rule params by default
+                rule_params['mqtt'] = mqtt
 
                 # Run the rule with the appropriate params
                 RULE_VALUES[pin['identifier']] = action(

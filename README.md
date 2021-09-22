@@ -1,6 +1,6 @@
-# IoT Server
+# IoT Device
 
-A simple IoT Server which allows the user to control ESP8266 nodes
+Generic Micropython based IoT Device (ESP8266/ESP32) Configurable Via https://github.com/hacklabza/iotserver
 
 ## ESP8266 Node
 

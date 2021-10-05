@@ -14,6 +14,14 @@ CONFIG = {}
 RULE_VALUES = {}
 MQTT_SUB_MSG = {}
 
+# Log Levels
+INFO = 'info'
+DEBUG = 'debug'
+WARNING = 'warning'
+ERROR = 'error'
+
+LOG_LEVELS = [INFO, DEBUG, WARNING, ERROR]
+
 
 def load_config():
     with open('config/config.json', 'r') as config_file:
@@ -70,11 +78,15 @@ def set_time(mqtt, time_config):
         ntptime.settime()
     except OSError:
         time.sleep(2)
-        ntptime.settime()
+        try:
+            ntptime.settime()
+        except:
+            log_message(
+                mqtt, 'Could not retrieve local time. Process aborted.', ERROR
+            )
 
     log_message(
-        mqtt,
-        'Local time set to {now}'.format(now=time.localtime())
+        mqtt, 'Local time set to {now}'.format(now=time.localtime()), DEBUG
     )
 
 
@@ -83,7 +95,8 @@ def connect_mqtt(mqtt_config):
     mqtt.connect()
     log_message(
         mqtt,
-        'Connected to MQTT at {host}'.format(host=mqtt_config['host'])
+        'Connected to MQTT at {host}'.format(host=mqtt_config['host']),
+        DEBUG
     )
     return mqtt
 
@@ -96,13 +109,18 @@ def publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message):
         mqtt.publish(mqtt_queue, message)
 
 
-def log_message(mqtt, message):
+def log_message(mqtt, message, level):
     mqtt_config = CONFIG['mqtt']
-    mqtt_queue = 'iot-devices/{client_id}/logs'.format(
-        client_id=mqtt_config['client_id']
-    )
-    publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message)
-    print(message)
+    logging_config = CONFIG['logging']
+
+    if LOG_LEVELS.index(level) >= LOG_LEVELS.index(logging_config['level']):
+        mqtt_queue = 'iot-devices/{client_id}/logs'.format(
+            client_id=mqtt_config['client_id']
+        )
+        publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message)
+
+    if logging_config['level'] in [INFO, DEBUG]:
+        print(message)
 
 
 def log_status(mqtt, identifier, status):
@@ -115,7 +133,7 @@ def log_status(mqtt, identifier, status):
 
 
 def run(mqtt, pin_config):
-    log_message(mqtt, 'Started')
+    log_message(mqtt, 'Started', DEBUG)
     pins = {}
     for pin in pin_config:
 
@@ -181,7 +199,8 @@ def run(mqtt, pin_config):
                     mqtt,
                     'Running rule: {action} with input: {input}'.format(
                         action=rule['action'], input=str(rule_params)
-                    )
+                    ),
+                    DEBUG
                 )
 
                 # Add mqtt to rule params by default
@@ -197,11 +216,11 @@ def run(mqtt, pin_config):
                     'Completed rule: {action} with output: {output}'.format(
                         action=rule['action'],
                         output=RULE_VALUES[pin['identifier']]
-                    )
+                    ),
+                    DEBUG
                 )
-                log_status(
-                    mqtt, pin['identifier'], str(RULE_VALUES[pin['identifier']])
-                )
+
+        log_status(mqtt, pin['identifier'], json.dumps(RULE_VALUES))
 
         time.sleep(CONFIG['main']['process_interval'])
 

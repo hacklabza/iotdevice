@@ -11,6 +11,9 @@
         "password": null,
         "ssl_enabled": false
     },
+    "logging": {
+        "level": "debug"
+    },
     "main": {
         "process_interval": 15
     },
@@ -29,7 +32,8 @@
                     "action": "timer",
                     "input": {
                         "start_time": "07:00",
-                        "end_time": "17:00"
+                        "end_time": "17:00",
+                        "timezone": "+0200"
                     }
                 }
             ]

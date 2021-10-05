@@ -96,11 +96,18 @@ def mqtt_toggle(pin, rule, **kwargs):
 def timer(pin, rule, **kwargs):
     start_time = int(''.join(kwargs.get('start_time').split(':')))
     end_time = int(''.join(kwargs.get('end_time').split(':')))
+    timezone = kwargs.get('timezone', '+0000')
 
     current_time = int(''.join([
         '0' + str(i) if i < 10 else
         str(i) for i in time.localtime()[3:5]
     ]))
+
+    # Set the current time to the correct timezone
+    if '+' in timezone:
+        current_time += int(timezone.replace('+', ''))
+    elif '-' in timezone:
+        current_time -= int(timezone.replace('-', ''))
 
     return end_time > current_time > start_time
 

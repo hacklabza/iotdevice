@@ -1,96 +1,26 @@
 {
     "wifi": {
-        "essid": "********",
-        "password": "********",
+        "essid": "************",
+        "password": "************",
         "retry_count": 10
     },
     "mqtt": {
-        "client_id": "my-smartgarden",
-        "host": "192.168.1.5",
+        "client_id": "a93ef690-c894-42ca-95f2-d692cf3c9b44",
+        "host": "192.168.0.3",
         "username": null,
         "password": null,
         "ssl_enabled": false
     },
     "logging": {
-        "level": "debug"
+        "level": "warning"
     },
     "main": {
-        "process_interval": 15
+        "identifier": "a93ef690-c894-42ca-95f2-d692cf3c9b44",
+        "process_interval": 15,
+        "webrepl_password": "insecure"
     },
     "time": {
         "server": "za.pool.ntp.org"
     },
-    "pins": [
-        {
-            "pin_number": null,
-            "name": "Day Timer",
-            "identifier": "day_timer",
-            "analog": false,
-            "read": true,
-            "rules": [
-                {
-                    "action": "timer",
-                    "input": {
-                        "start_time": "07:00",
-                        "end_time": "17:00",
-                        "timezone": "+0200"
-                    }
-                }
-            ]
-        },
-        {
-            "pin_number": null,
-            "name": "MQTT Switch On",
-            "identifier": "mqtt_switch_on",
-            "analog": false,
-            "read": true,
-            "rules": [
-                {
-                    "action": "mqtt_toggle",
-                    "input": {
-                        "queue": "iot-devices/my-smartgarden/toggle"
-                    }
-                }
-            ]
-        },
-        {
-            "pin_number": 5,
-            "name": "Soil Moisture Sensor",
-            "identifier": "soil_moisture_sensor",
-            "analog": false,
-            "read": true,
-            "rules": [
-                {
-                    "action": "read_bool_sample",
-                    "input": {
-                        "reverse": true,
-                        "sample_size": 5
-                    }
-                }
-            ]
-        },
-        {
-            "pin_number": 4,
-            "name": "Solenid Relay",
-            "identifier": "solenoid_relay",
-            "analog": false,
-            "read": false,
-            "rules": [
-                {
-                    "action": "toggle",
-                    "input": {
-                        "on": [
-                            [
-                                "day_timer",
-                                "soil_moisture_sensor"
-                            ],
-                            [
-                                "mqtt_switch_on"
-                            ]
-                        ]
-                    }
-                }
-            ]
-        }
-    ]
+    "pins": []
 }

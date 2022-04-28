@@ -4,8 +4,7 @@ import ntptime
 import machine
 import time
 import upip
-
-from umqtt.simple import MQTTClient
+import webrepl
 
 import rules
 
@@ -28,50 +27,6 @@ def load_config():
         return json.loads(config_file.read())
 
 
-def install_deps():
-    with open('config/requirements.upip.txt', 'r') as requirements_file:
-        for requirement in requirements_file:
-            requirement = requirement.replace('\n', '')
-            if requirement:
-                print(
-                    'Installing {requirement}'.format(requirement=requirement)
-                )
-                upip.install(requirement)
-
-
-def connect_wifi(wifi_config):
-    wifi = network.WLAN(network.STA_IF)
-    if not wifi.isconnected():
-        print('Connecting to wifi...')
-        wifi.active(True)
-        essid = wifi_config['essid']
-        wifi.connect(essid, wifi_config['password'])
-        for i in range(wifi_config['retry_count']):
-            if not wifi.isconnected():
-                print(
-                    'Connection attempt {count}/{retry_count}'.format(
-                        count=i + 1, retry_count=wifi_config['retry_count']
-                    )
-                )
-                time.sleep(5)
-                if i == wifi_config['retry_count'] - 1:
-                    print('Connection failed')
-            else:
-                ip_address = wifi.ifconfig()[0]
-                print(
-                    'Connected to {essid} with IP: {ip_address}'.format(
-                        essid=essid, ip_address=ip_address
-                    )
-                )
-
-                led_pin = machine.Signal(machine.Pin(2, machine.Pin.OUT), invert=True)
-                led_pin.on()
-
-                break
-
-    return wifi.isconnected()
-
-
 def set_time(mqtt, time_config):
     ntptime.host = time_config['server']
     try:
@@ -91,6 +46,12 @@ def set_time(mqtt, time_config):
 
 
 def connect_mqtt(mqtt_config):
+    try:
+        from umqtt.simple import MQTTClient
+    except ImportError:
+        upip.install('micropython-umqtt.simple')
+        from umqtt.simple import MQTTClient
+
     mqtt = MQTTClient(mqtt_config['client_id'], mqtt_config['host'])
     mqtt.connect()
     log_message(
@@ -106,7 +67,17 @@ def publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message):
         mqtt.publish(mqtt_queue, message)
     except OSError:
         connect_mqtt(mqtt_config)
-        mqtt.publish(mqtt_queue, message)
+        publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message)
+
+
+def subscribe_mqtt_message(mqtt, mqtt_config, mqtt_queue, callback):
+    try:
+        mqtt.set_callback(callback)
+        mqtt.subscribe(mqtt_queue)
+        mqtt.check_msg()
+    except OSError:
+        connect_mqtt(mqtt_config)
+        subscribe_mqtt_message(mqtt, mqtt_config, mqtt_queue, callback)
 
 
 def log_message(mqtt, message, level):
@@ -123,11 +94,10 @@ def log_message(mqtt, message, level):
         print(message)
 
 
-def log_status(mqtt, identifier, status):
+def log_status(mqtt, status):
     mqtt_config = CONFIG['mqtt']
-    mqtt_queue = 'iot-devices/{client_id}/status/{identifier}'.format(
-        client_id=mqtt_config['client_id'],
-        identifier=identifier
+    mqtt_queue = 'iot-devices/{client_id}/status/'.format(
+        client_id=mqtt_config['client_id']
     )
     publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, status)
 
@@ -154,73 +124,72 @@ def run(mqtt, pin_config):
 
     while True:
         for pin in pin_config:
+            rule = pin['rule']
 
-            # Iterate over the rules and run them
-            for rule in pin['rules']:
+            # Get the rule action method
+            action = getattr(rules, rule['action'])
 
-                # Get the rule action method
-                action = getattr(rules, rule['action'])
+            # Retrieve method parms including return values from previous
+            # actions
+            rule_params = {}
+            for key, value in rule['input'].items():
 
-                # Retrieve method parms including return values from previous
-                # actions
-                rule_params = {}
-                for key, value in rule['input'].items():
-
-                    # Determine if the input value is a return value from a
-                    # previous action or set the static value
-                    if type(value) == list:
-                        value_items = value
-                        operator = 'and'
-                        values = []
-                        for value_item in value_items:
-                            if type(value_item) == list:
-                                operator = 'or'
-                                split_values = []
-                                for v in value_item:
-                                    split_values.append(
-                                        RULE_VALUES[v]
-                                    )
-                                values.append(all(split_values))
-                            else:
-                                values.append(RULE_VALUES[value_item])
-
-                        if operator == 'or':
-                            rule_params[key] = any(values)
+                # Determine if the input value is a return value from a
+                # previous action or set the static value
+                if type(value) == list:
+                    value_items = value
+                    operator = 'and'
+                    values = []
+                    for value_item in value_items:
+                        if type(value_item) == list:
+                            operator = 'or'
+                            split_values = []
+                            for v in value_item:
+                                split_values.append(
+                                    RULE_VALUES[v]
+                                )
+                            values.append(all(split_values))
                         else:
-                            rule_params[key] = all(values)
+                            values.append(RULE_VALUES[value_item])
 
+                    if operator == 'or':
+                        rule_params[key] = any(values)
                     else:
-                        if value in RULE_VALUES:
-                            rule_params[key] = RULE_VALUES[value]
-                        else:
-                            rule_params[key] = value
+                        rule_params[key] = all(values)
 
-                log_message(
-                    mqtt,
-                    'Running rule: {action} with input: {input}'.format(
-                        action=rule['action'], input=str(rule_params)
-                    ),
-                    DEBUG
-                )
+                else:
+                    if value in RULE_VALUES:
+                        rule_params[key] = RULE_VALUES[value]
+                    else:
+                        rule_params[key] = value
 
-                # Add mqtt to rule params by default
-                rule_params['mqtt'] = mqtt
+            log_message(
+                mqtt,
+                'Running rule: {action} with input: {input}'.format(
+                    action=rule['action'], input=str(rule_params)
+                ),
+                DEBUG
+            )
 
-                # Run the rule with the appropriate params
-                RULE_VALUES[pin['identifier']] = action(
-                    pins[pin['identifier']], rule, **rule_params
-                )
+            # Add mqtt to rule params by default
+            rule_params['mqtt'] = mqtt
 
-                log_message(
-                    mqtt,
-                    'Completed rule: {action} with output: {output}'.format(
-                        action=rule['action'],
-                        output=RULE_VALUES[pin['identifier']]
-                    ),
-                    DEBUG
-                )
+            # Run the rule with the appropriate params and save the result to
+            # rule values
+            RULE_VALUES[pin['identifier']] = action(
+                pins[pin['identifier']], rule, **rule_params
+            )
 
-        log_status(mqtt, pin['identifier'], json.dumps(RULE_VALUES))
+            log_message(
+                mqtt,
+                'Completed rule: {action} with output: {output}'.format(
+                    action=rule['action'],
+                    output=RULE_VALUES[pin['identifier']]
+                ),
+                DEBUG
+            )
+
+        log_status(mqtt, json.dumps(RULE_VALUES))
 
         time.sleep(CONFIG['main']['process_interval'])
 
@@ -228,22 +197,13 @@ def run(mqtt, pin_config):
 if __name__ == '__main__':
     CONFIG = load_config()
 
-    # Connect to wifi if enabled
-    wifi_config = CONFIG['wifi']
-    wifi_connected = connect_wifi(wifi_config)
+    # Connects to the configured mqtt queue
+    mqtt_config = CONFIG['mqtt']
+    mqtt = connect_mqtt(mqtt_config)
 
-    # Connect network dependant services
-    if wifi_connected:
+    # Set the local time
+    set_time(mqtt, CONFIG['time'])
 
-        # Install all dependancies
-        install_deps()
-
-        # Connects to the configured mqtt queue
-        mqtt = connect_mqtt(CONFIG['mqtt'])
-
-        # Set the local time
-        set_time(mqtt, CONFIG['time'])
-
-        # Get the pin config and run the main method
-        pin_config = CONFIG['pins']
-        run(mqtt, pin_config)
+    # Get the pin config and run the main method
+    pin_config = CONFIG['pins']
+    run(mqtt, pin_config)

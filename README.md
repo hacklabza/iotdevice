@@ -33,7 +33,6 @@ ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 ls
 # Copy the config files over to your board
 ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 mkdir config
 ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/config/config.json config/config.json
-ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/config/requirements.upip.txt config/requirements.upip.txt
 
 # Copy the executable files over to your board
 ampy --port /dev/tty.usbserial-01A7B50C -d 0.5 put embedded/rules.py

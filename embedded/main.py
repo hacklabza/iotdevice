@@ -1,10 +1,8 @@
 import json
-import network
 import ntptime
 import machine
 import time
 import upip
-import webrepl
 
 import rules
 
@@ -62,22 +60,14 @@ def connect_mqtt(mqtt_config):
     return mqtt
 
 
-def publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message):
-    try:
-        mqtt.publish(mqtt_queue, message)
-    except OSError:
-        connect_mqtt(mqtt_config)
-        publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message)
+def publish_mqtt_message(mqtt, mqtt_queue, message):
+    mqtt.publish(mqtt_queue, message)
 
 
-def subscribe_mqtt_message(mqtt, mqtt_config, mqtt_queue, callback):
-    try:
-        mqtt.set_callback(callback)
-        mqtt.subscribe(mqtt_queue)
-        mqtt.check_msg()
-    except OSError:
-        connect_mqtt(mqtt_config)
-        subscribe_mqtt_message(mqtt, mqtt_config, mqtt_queue, callback)
+def subscribe_mqtt_message(mqtt, mqtt_queue, callback):
+    mqtt.set_callback(callback)
+    mqtt.subscribe(mqtt_queue)
+    mqtt.check_msg()
 
 
 def log_message(mqtt, message, level):
@@ -88,7 +78,7 @@ def log_message(mqtt, message, level):
         mqtt_queue = 'iot-devices/{client_id}/logs'.format(
             client_id=mqtt_config['client_id']
         )
-        publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, message)
+        publish_mqtt_message(mqtt, mqtt_queue, message)
 
     if logging_config['level'] in [INFO, DEBUG]:
         print(message)
@@ -99,7 +89,7 @@ def log_status(mqtt, status):
     mqtt_queue = 'iot-devices/{client_id}/status/'.format(
         client_id=mqtt_config['client_id']
     )
-    publish_mqtt_message(mqtt, mqtt_config, mqtt_queue, status)
+    publish_mqtt_message(mqtt, mqtt_queue, status)
 
 
 def run(mqtt, pin_config):

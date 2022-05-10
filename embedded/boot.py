@@ -27,9 +27,9 @@ def connect_wifi(wifi_config):
                         count=i + 1, retry_count=wifi_config['retry_count']
                     )
                 )
-                time.sleep(5)
+                time.sleep(10)
                 if i == wifi_config['retry_count'] - 1:
-                    print('Connection failed')
+                    print('Connection failed. Rebooting.')
             else:
                 ip_address = wifi.ifconfig()[0]
                 print(
@@ -57,3 +57,6 @@ if wifi_connected:
 
     # Setup webrepl
     webrepl.start(password=CONFIG['main']['webrepl_password'])
+
+else:
+    machine.reset()

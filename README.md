@@ -18,7 +18,7 @@ pip install -r requirements.txt
 
 # Flash your board with the latest version of micropyton (https://micropython.org/download/esp8266/)
 esptool.py --chip esp8266 --port /dev/tty.usbserial-01A7B50C erase_flash
-esptool.py --port /dev/tty.usbserial-01A7B50C --baud 460800 write_flash --flash_size=detect 0 ~/Downloads/esp8266-20210418-v1.15.bin
+esptool.py --port /dev/tty.usbserial-01A7B50C --baud 460800 write_flash --flash_size=detect 0 ~/Downloads/esp8266-20220618-v1.19.1.bin
 
 # Check  that you get a micropython REPL (OSX) - ctrl+a k y to kill session
 screen /dev/tty.usbserial-01A7B50C 115200

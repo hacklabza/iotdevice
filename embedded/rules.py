@@ -1,3 +1,5 @@
+import json
+import socket
 import time
 
 
@@ -8,6 +10,71 @@ def get_mqtt_msg(topic, msg):
     global MQTT_SUB_MSG
     if topic and msg:
         MQTT_SUB_MSG[str(topic.decode('utf-8'))] = str(msg.decode('utf-8'))
+
+
+def get_service_response(url, auth_header):
+    response_body = ''
+
+    _, _, host, path = url.split('/', 3)
+    port = 80
+    if ':' in host:
+        host, port = host.split(':', 1)
+
+    address = socket.getaddrinfo(host, int(port))[0][-1]
+    request = 'GET /{path} HTTP/1.0\r\nHost: {host}\r\n{auth_header}\r\n\r\n'.format(
+        path=path,
+        host=host,
+        auth_header=auth_header
+    )
+
+    _socket = socket.socket()
+    _socket.connect(address)
+    _socket.send(bytes(request, 'utf8'))
+
+    while True:
+        data = _socket.recv(100)
+        if data:
+            response_body += str(data, 'utf8')
+        else:
+            break
+    _socket.close()
+
+    response_lines = response_body.split()
+    if response_lines[1] == '200':
+        print(response_lines[-1])
+        return json.loads(response_lines[-1])
+
+    return None
+
+
+def find_xpath_value(response, xpaths):
+    xpath = xpaths.pop()  # paths must be reversed before passing it in
+
+    try:
+        response = response[int(xpath)]
+    except ValueError:
+        response = response[xpath]
+    except (KeyError, IndexError):
+        return None
+
+    if not len(xpaths):
+        return response
+
+    return find_xpath_value(response, xpaths)
+
+
+def run_condition(value, condition):
+    try:
+        if condition['operator'] == 'eq':
+            return value == condition['value']
+        elif condition['operator'] == 'gt':
+            return value > condition['value']
+        elif condition['operator'] == 'lt':
+            return value < condition['value']
+    except TypeError:
+        pass
+
+    return False
 
 
 def read(pin, rule, **kwargs):
@@ -100,3 +167,24 @@ def timer(pin, rule, **kwargs):
 
     return end_time > current_time > start_time
 
+
+def service(pin, rule, **kwargs):
+    url = kwargs.get('url')
+    auth_header = kwargs.get('auth_header')
+    condition = kwargs.get('condition')
+
+    response = get_service_response(url, auth_header)
+    value = None
+    if response:
+        xpaths = condition['xpath'].split('.')
+        xpaths.reverse()
+        value = find_xpath_value(response, xpaths)
+
+        if condition['operator'] == 'eq':
+            return value == condition['value']
+        elif condition['operator'] == 'gt':
+            return value > condition['value']
+        elif condition['operator'] == 'lt':
+            return value < condition['value']
+
+    return run_condition(value, condition)

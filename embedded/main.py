@@ -93,7 +93,9 @@ def log_status(mqtt, status):
 
 
 def run(mqtt, pin_config):
-    log_message(mqtt, 'Started', DEBUG)
+
+    log_message(mqtt, 'Device started.', DEBUG)
+
     pins = {}
     for pin in pin_config:
 
@@ -108,7 +110,7 @@ def run(mqtt, pin_config):
                 pins[pin['identifier']] = machine.Signal(machine.Pin(
                     pin['pin_number'],
                     machine.Pin.IN if pin['read'] else machine.Pin.OUT
-                ), invert=True)
+                ), invert=False)
         else:
             pins[pin['identifier']] = None
 
@@ -147,6 +149,9 @@ def run(mqtt, pin_config):
                     else:
                         rule_params[key] = all(values)
 
+                elif type(value) == dict:
+                    rule_params[key] = value
+
                 else:
                     if value in RULE_VALUES:
                         rule_params[key] = RULE_VALUES[value]
@@ -155,7 +160,7 @@ def run(mqtt, pin_config):
 
             log_message(
                 mqtt,
-                'Running rule: {action} with input: {input}'.format(
+                'Running rule: {action} with input: {input}.'.format(
                     action=rule['action'], input=str(rule_params)
                 ),
                 DEBUG
@@ -172,7 +177,7 @@ def run(mqtt, pin_config):
 
             log_message(
                 mqtt,
-                'Completed rule: {action} with output: {output}'.format(
+                'Completed rule: {action} with output: {output}.'.format(
                     action=rule['action'],
                     output=RULE_VALUES[pin['identifier']]
                 ),
@@ -182,6 +187,10 @@ def run(mqtt, pin_config):
         log_status(mqtt, json.dumps(RULE_VALUES))
 
         time.sleep(CONFIG['main']['process_interval'])
+
+        # Check if the config has been updated, reboot if it has
+        if CONFIG != load_config():
+            machine.reset()
 
 
 if __name__ == '__main__':
@@ -196,4 +205,10 @@ if __name__ == '__main__':
 
     # Get the pin config and run the main method
     pin_config = CONFIG['pins']
-    run(mqtt, pin_config)
+    try:
+        run(mqtt, pin_config)
+    except Exception as exc:
+        log_message(mqtt, str(exc), ERROR)
+
+        # Retry once if it fails
+        run(mqtt, pin_config)

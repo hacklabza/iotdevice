@@ -1,3 +1,4 @@
+import hashlib
 import json
 import ntptime
 import machine
@@ -18,6 +19,9 @@ WARNING = 'warning'
 ERROR = 'error'
 
 LOG_LEVELS = [INFO, DEBUG, WARNING, ERROR]
+
+# Device pin status state
+PREVIOUS_STATE = None
 
 
 def load_config():
@@ -85,11 +89,17 @@ def log_message(mqtt, message, level):
 
 
 def log_status(mqtt, status):
+    global PREVIOUS_STATE
+
     mqtt_config = CONFIG['mqtt']
     mqtt_queue = 'iot-devices/{client_id}/status/'.format(
         client_id=mqtt_config['client_id']
     )
-    publish_mqtt_message(mqtt, mqtt_queue, status)
+
+    if PREVIOUS_STATE != hashlib.sha1(status).digest():
+        publish_mqtt_message(mqtt, mqtt_queue, status)
+
+    PREVIOUS_STATE = hashlib.sha1(status).digest()
 
 
 def run(mqtt, pin_config):

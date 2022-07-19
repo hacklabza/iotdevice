@@ -28,8 +28,11 @@ def get_service_response(url, auth_header):
     )
 
     _socket = socket.socket()
-    _socket.connect(address)
-    _socket.send(bytes(request, 'utf8'))
+    try:
+        _socket.connect(address)
+        _socket.send(bytes(request, 'utf8'))
+    except Exception:
+        return None
 
     while True:
         data = _socket.recv(100)
@@ -71,9 +74,7 @@ def run_condition(value, condition):
         elif condition['operator'] == 'lt':
             return value < condition['value']
     except TypeError:
-        pass
-
-    return False
+        return False
 
 
 def read(pin, rule, **kwargs):
@@ -177,16 +178,11 @@ def service(pin, rule, **kwargs):
 
     response = get_service_response(url, auth_header)
     value = None
-    if response:
+    if response is not None:
         xpaths = condition['xpath'].split('.')
         xpaths.reverse()
         value = find_xpath_value(response, xpaths)
 
-        if condition['operator'] == 'eq':
-            return value == condition['value']
-        elif condition['operator'] == 'gt':
-            return value > condition['value']
-        elif condition['operator'] == 'lt':
-            return value < condition['value']
+        return run_condition(value, condition)
 
-    return run_condition(value, condition)
+    return False

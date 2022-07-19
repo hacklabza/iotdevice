@@ -41,7 +41,6 @@ def get_service_response(url, auth_header):
 
     response_lines = response_body.split()
     if response_lines[1] == '200':
-        print(response_lines[-1])
         return json.loads(response_lines[-1])
 
     return None
@@ -160,10 +159,13 @@ def mqtt_toggle(pin, rule, **kwargs):
 
 
 def timer(pin, rule, **kwargs):
-    start_time = int(kwargs.get('gmt_start_time').replace(':', ''))
-    end_time = int(kwargs.get('gmt_end_time').replace(':', ''))
+    start_time = kwargs.get('gmt_start_time').replace(':', '')
+    end_time = kwargs.get('gmt_end_time').replace(':', '')
 
-    current_time = int(''.join(str(p) for p in time.localtime()[3:5]))
+    now = time.localtime()
+    current_hour = str(now[3] if now[3] > 9 else '0{hour}'.format(hour=now[3]))
+    current_minute = str(now[4] if now[4] > 9 else '0{hour}'.format(hour=now[4]))
+    current_time = current_hour + current_minute
 
     return end_time > current_time > start_time
 

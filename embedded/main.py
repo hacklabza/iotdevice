@@ -41,6 +41,8 @@ def set_time(mqtt, time_config):
             log_message(
                 mqtt, 'Could not retrieve local time. Process aborted.', ERROR
             )
+            time.sleep(300)
+            machine.reset()
 
     log_message(
         mqtt, 'Local time set to {now}'.format(now=time.localtime()), DEBUG
@@ -124,6 +126,7 @@ def run(mqtt, pin_config):
         else:
             pins[pin['identifier']] = None
 
+    run_count = 0
     while True:
         for pin in pin_config:
             rule = pin['rule']
@@ -168,31 +171,41 @@ def run(mqtt, pin_config):
                     else:
                         rule_params[key] = value
 
-            log_message(
-                mqtt,
-                'Running rule: {action} with input: {input}.'.format(
-                    action=rule['action'], input=str(rule_params)
-                ),
-                DEBUG
-            )
+            if run_count % pin.get('interval', 1) == 0:
+                log_message(
+                    mqtt,
+                    'Running rule: {action} with input: {input}.'.format(
+                        action=rule['action'], input=str(rule_params)
+                    ),
+                    DEBUG
+                )
 
-            # Add mqtt to rule params by default
-            rule_params['mqtt'] = mqtt
+                # Add mqtt to rule params by default
+                rule_params['mqtt'] = mqtt
 
-            # Run the rule with the appropriate params and save the result to
-            # rule values
-            RULE_VALUES[pin['identifier']] = action(
-                pins[pin['identifier']], rule, **rule_params
-            )
+                # Run the rule with the appropriate params and save the result to
+                # rule values
 
-            log_message(
-                mqtt,
-                'Completed rule: {action} with output: {output}.'.format(
-                    action=rule['action'],
-                    output=RULE_VALUES[pin['identifier']]
-                ),
-                DEBUG
-            )
+                RULE_VALUES[pin['identifier']] = action(
+                    pins[pin['identifier']], rule, **rule_params
+                )
+
+                log_message(
+                    mqtt,
+                    'Completed rule: {action} with output: {output}.'.format(
+                        action=rule['action'],
+                        output=RULE_VALUES[pin['identifier']]
+                    ),
+                    DEBUG
+                )
+            else:
+                log_message(
+                    mqtt,
+                    'Skipping rule: {action} with input: {input}.'.format(
+                        action=rule['action'], input=str(rule_params)
+                    ),
+                    DEBUG
+                )
 
         log_status(mqtt, json.dumps(RULE_VALUES))
 
@@ -201,6 +214,8 @@ def run(mqtt, pin_config):
         # Check if the config has been updated, reboot if it has
         if CONFIG != load_config():
             machine.reset()
+
+        run_count += 1
 
 
 if __name__ == '__main__':
@@ -219,6 +234,5 @@ if __name__ == '__main__':
         run(mqtt, pin_config)
     except Exception as exc:
         log_message(mqtt, str(exc), ERROR)
-
-        # Retry once if it fails
-        run(mqtt, pin_config)
+        time.sleep(300)
+        machine.reset()

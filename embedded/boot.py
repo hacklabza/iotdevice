@@ -46,17 +46,19 @@ def connect_wifi(wifi_config):
     return wifi.isconnected()
 
 
-CONFIG = load_config()
+WIFI_CONFIG = load_config()['wifi']
+MAIN_CONFIG = load_config()['main']
 
 # Connect to wifi if enabled
-wifi_config = CONFIG['wifi']
-wifi_connected = connect_wifi(wifi_config)
+wifi_connected = connect_wifi(WIFI_CONFIG)
 
 # Connect network dependant services
 if wifi_connected:
 
     # Setup webrepl
-    webrepl.start(password=CONFIG['main']['webrepl_password'])
+    webrepl.start(password=MAIN_CONFIG['webrepl_password'])
+
+    gc.collect()
 
 else:
     machine.reset()

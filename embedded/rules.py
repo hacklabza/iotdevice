@@ -12,7 +12,7 @@ def get_mqtt_msg(topic, msg):
         MQTT_SUB_MSG[str(topic.decode('utf-8'))] = str(msg.decode('utf-8'))
 
 
-def get_service_response(url, auth_header):
+def get_service_response(url, auth_header=None):
     response_body = ''
 
     _, _, host, path = url.split('/', 3)
@@ -21,18 +21,22 @@ def get_service_response(url, auth_header):
         host, port = host.split(':', 1)
 
     address = socket.getaddrinfo(host, int(port))[0][-1]
-    request = 'GET /{path} HTTP/1.0\r\nHost: {host}\r\n{auth_header}\r\n\r\n'.format(
-        path=path,
-        host=host,
-        auth_header=auth_header
-    )
+    if auth_header:
+        request = 'GET /{path} HTTP/1.0\r\nHost: {host}\r\n{auth_header}\r\n\r\n'.format(
+            path=path,
+            host=host,
+            auth_header=auth_header
+        )
+    else:
+        request = 'GET /{path} HTTP/1.0\r\nHost: {host}\r\n\r\n'.format(
+            path=path,
+            host=host
+        )
 
     _socket = socket.socket()
-    try:
-        _socket.connect(address)
-        _socket.send(bytes(request, 'utf8'))
-    except Exception:
-        return None
+    _socket.settimeout(15.0)
+    _socket.connect(address)
+    _socket.send(bytes(request, 'utf8'))
 
     while True:
         data = _socket.recv(100)
@@ -43,7 +47,7 @@ def get_service_response(url, auth_header):
     _socket.close()
 
     response_lines = response_body.split()
-    if response_lines[1] == '200':
+    if response_lines[1] in ['200', '201', '301']:
         return json.loads(response_lines[-1])
 
     return None

@@ -7,7 +7,6 @@ import upip
 
 import rules
 
-
 CONFIG = {}
 RULE_VALUES = {}
 MQTT_SUB_MSG = {}
@@ -39,7 +38,7 @@ def set_time(mqtt, time_config):
             ntptime.settime()
         except:
             log_message(
-                mqtt, 'Could not retrieve local time. Process aborted.', ERROR
+                mqtt, 'Could not retrieve local time. Retrying.', WARNING
             )
             time.sleep(300)
             machine.reset()
@@ -56,7 +55,16 @@ def connect_mqtt(mqtt_config):
         upip.install('micropython-umqtt.simple')
         from umqtt.simple import MQTTClient
 
-    mqtt = MQTTClient(mqtt_config['client_id'], mqtt_config['host'])
+    mqtt = MQTTClient(
+        client_id=mqtt_config['client_id'],
+        server=mqtt_config['host'],
+        keepalive=mqtt_config.get('keepalive', 0)
+    )
+
+    # Setup last will to detect when the device disconnects ungracefully
+    if mqtt_config.get('lastwill'):
+        mqtt.set_last_will(**mqtt_config['lastwill'])
+
     mqtt.connect()
     log_message(
         mqtt,
@@ -104,6 +112,15 @@ def log_status(mqtt, status):
     PREVIOUS_STATE = hashlib.sha1(status).digest()
 
 
+def health_check(mqtt):
+
+    # Check Wifi connection
+    rules.get_service_response(**CONFIG['health'])
+
+    # Check MQTT connection
+    mqtt.ping()
+
+
 def run(mqtt, pin_config):
 
     log_message(mqtt, 'Device started.', DEBUG)
@@ -128,6 +145,9 @@ def run(mqtt, pin_config):
 
     run_count = 0
     while True:
+
+        health_check(mqtt)
+
         for pin in pin_config:
             rule = pin['rule']
 
@@ -180,12 +200,12 @@ def run(mqtt, pin_config):
                     DEBUG
                 )
 
-                # Add mqtt to rule params by default
+                # Add mqtt and server config to rule params by default
                 rule_params['mqtt'] = mqtt
+                rule_params['config'] = CONFIG
 
                 # Run the rule with the appropriate params and save the result to
                 # rule values
-
                 RULE_VALUES[pin['identifier']] = action(
                     pins[pin['identifier']], rule, **rule_params
                 )
@@ -219,19 +239,24 @@ def run(mqtt, pin_config):
 
 
 if __name__ == '__main__':
+
     CONFIG = load_config()
 
-    # Connects to the configured mqtt queue
-    mqtt_config = CONFIG['mqtt']
-    mqtt = connect_mqtt(mqtt_config)
-
-    # Set the local time
-    set_time(mqtt, CONFIG['time'])
-
-    # Get the pin config and run the main method
+    # Get the pin config
     pin_config = CONFIG['pins']
+
     try:
+
+        # Connects to the configured mqtt queue
+        mqtt_config = CONFIG['mqtt']
+        mqtt = connect_mqtt(mqtt_config)
+
+        # Set the local time
+        set_time(mqtt, CONFIG['time'])
+
+        # Run the rules
         run(mqtt, pin_config)
+
     except Exception as exc:
         log_message(mqtt, str(exc), ERROR)
         time.sleep(300)

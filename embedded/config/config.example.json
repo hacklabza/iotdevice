@@ -5,21 +5,21 @@
         "retry_count": 10
     },
     "mqtt": {
-        "client_id": "a93ef690-c894-42ca-95f2-d692cf3c9b44",
+        "client_id": "{identifier}",
         "host": "192.168.50.103",
         "username": null,
         "password": null,
         "ssl_enabled": false,
         "lastwill": {
-            "topic": "iot-devices/a93ef690-c894-42ca-95f2-d692cf3c9b44/logs",
-            "msg": "Device disconnected from MQTT"
+            "topic": "iot-devices/{identifier}/logs",
+            "message": "Device disconnected from MQTT"
         }
     },
     "logging": {
         "level": "warning"
     },
     "main": {
-        "identifier": "a93ef690-c894-42ca-95f2-d692cf3c9b44",
+        "identifier": null,
         "process_interval": 15,
         "webrepl_password": "**********"
     },
@@ -27,7 +27,7 @@
         "server": "za.pool.ntp.org"
     },
     "health": {
-        "url": "http://192.168.50.118:8000/health/"
+        "url": "http://192.168.50.103:8000/health/{identifier}/"
     },
     "pins": []
 }

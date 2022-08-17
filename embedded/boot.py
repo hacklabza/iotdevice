@@ -1,6 +1,6 @@
 # This file is executed on every boot (including wake-boot from deepsleep)
-import json
 import gc
+import json
 import machine
 import network
 import time

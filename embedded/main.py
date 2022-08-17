@@ -1,3 +1,4 @@
+import gc
 import hashlib
 import json
 import ntptime
@@ -7,6 +8,7 @@ import upip
 
 import rules
 
+DEVICE_ID = None
 CONFIG = {}
 RULE_VALUES = {}
 MQTT_SUB_MSG = {}
@@ -56,14 +58,19 @@ def connect_mqtt(mqtt_config):
         from umqtt.simple import MQTTClient
 
     mqtt = MQTTClient(
-        client_id=mqtt_config['client_id'],
+        client_id=mqtt_config['client_id'].format(identifier=DEVICE_ID),
         server=mqtt_config['host'],
         keepalive=mqtt_config.get('keepalive', 0)
     )
 
     # Setup last will to detect when the device disconnects ungracefully
-    if mqtt_config.get('lastwill'):
-        mqtt.set_last_will(**mqtt_config['lastwill'])
+    lastwill = mqtt_config.get('lastwill')
+    if lastwill:
+        mqtt_config = CONFIG['mqtt']
+        mqtt.set_last_will(
+            topic=lastwill['topic'].format(identifier=DEVICE_ID),
+            msg=lastwill['message']
+        )
 
     mqtt.connect()
     log_message(
@@ -85,12 +92,15 @@ def subscribe_mqtt_message(mqtt, mqtt_queue, callback):
 
 
 def log_message(mqtt, message, level):
-    mqtt_config = CONFIG['mqtt']
     logging_config = CONFIG['logging']
 
+    if not mqtt:
+        print(message)
+        return
+
     if LOG_LEVELS.index(level) >= LOG_LEVELS.index(logging_config['level']):
-        mqtt_queue = 'iot-devices/{client_id}/logs'.format(
-            client_id=mqtt_config['client_id']
+        mqtt_queue = 'iot-devices/{identifier}/logs'.format(
+            identifier=DEVICE_ID
         )
         publish_mqtt_message(mqtt, mqtt_queue, message)
 
@@ -101,9 +111,8 @@ def log_message(mqtt, message, level):
 def log_status(mqtt, status):
     global PREVIOUS_STATE
 
-    mqtt_config = CONFIG['mqtt']
-    mqtt_queue = 'iot-devices/{client_id}/status/'.format(
-        client_id=mqtt_config['client_id']
+    mqtt_queue = 'iot-devices/{identifier}/status/'.format(
+        identifier=DEVICE_ID
     )
 
     if PREVIOUS_STATE != hashlib.sha1(status).digest():
@@ -115,7 +124,9 @@ def log_status(mqtt, status):
 def health_check(mqtt):
 
     # Check Wifi connection
-    rules.get_service_response(**CONFIG['health'])
+    rules.get_service_response(
+        url=CONFIG['health']['url'].format(identifier=DEVICE_ID)
+    )
 
     # Check MQTT connection
     mqtt.ping()
@@ -237,15 +248,23 @@ def run(mqtt, pin_config):
 
         run_count += 1
 
+        gc.collect()
+
 
 if __name__ == '__main__':
 
     CONFIG = load_config()
+    DEVICE_ID = CONFIG['main']['identifier']
 
     # Get the pin config
     pin_config = CONFIG['pins']
 
+    mqtt = None
     try:
+        # Raise an exception if the device id is not set and wait for the
+        # device to be configured in the server
+        if not DEVICE_ID:
+            raise Exception('Device not yet configured.')
 
         # Connects to the configured mqtt queue
         mqtt_config = CONFIG['mqtt']
@@ -259,5 +278,6 @@ if __name__ == '__main__':
 
     except Exception as exc:
         log_message(mqtt, str(exc), ERROR)
+
         time.sleep(300)
         machine.reset()

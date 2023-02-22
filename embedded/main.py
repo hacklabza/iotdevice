@@ -147,10 +147,13 @@ def run(mqtt, pin_config):
             if pin['analog']:
                 pins[pin['identifier']] = machine.ADC(pin['pin_number'])
             else:
-                pins[pin['identifier']] = machine.Signal(machine.Pin(
-                    pin['pin_number'],
-                    machine.Pin.IN if pin['read'] else machine.Pin.OUT
-                ), invert=False)
+                pins[pin['identifier']] = machine.Signal(
+                    machine.Pin(
+                        pin['pin_number'],
+                        machine.Pin.IN if pin['read'] else machine.Pin.OUT
+                    ),
+                    invert=False
+                )
         else:
             pins[pin['identifier']] = None
 

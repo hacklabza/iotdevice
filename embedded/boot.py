@@ -8,6 +8,7 @@ import webrepl
 
 gc.collect()
 
+
 def load_config():
     with open('config/config.json', 'r') as config_file:
         return json.loads(config_file.read())

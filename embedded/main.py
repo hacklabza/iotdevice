@@ -30,6 +30,11 @@ def load_config():
         return json.loads(config_file.read())
 
 
+def reset():
+    time.sleep(60)
+    machine.reset()
+
+
 def set_time(mqtt, time_config):
     ntptime.host = time_config['server']
     try:
@@ -38,12 +43,11 @@ def set_time(mqtt, time_config):
         time.sleep(2)
         try:
             ntptime.settime()
-        except:
+        except Exception:
             log_message(
                 mqtt, 'Could not retrieve local time. Retrying.', WARNING
             )
-            time.sleep(300)
-            machine.reset()
+            reset()
 
     log_message(
         mqtt, 'Local time set to {now}'.format(now=time.localtime()), DEBUG
@@ -145,7 +149,10 @@ def run(mqtt, pin_config):
 
             # Setup the initial pin as in or out based on the config
             if pin['analog']:
-                pins[pin['identifier']] = machine.ADC(pin['pin_number'])
+                pins[pin['identifier']] = machine.ADC(
+                    machine.Pin(pin['pin_number']),
+                    atten=machine.ADC.ATTN_11DB
+                )
             else:
                 pins[pin['identifier']] = machine.Signal(
                     machine.Pin(
@@ -247,7 +254,7 @@ def run(mqtt, pin_config):
 
         # Check if the config has been updated, reboot if it has
         if CONFIG != load_config():
-            machine.reset()
+            reset()
 
         run_count += 1
 
@@ -281,6 +288,4 @@ if __name__ == '__main__':
 
     except Exception as exc:
         log_message(mqtt, str(exc), ERROR)
-
-        time.sleep(300)
-        machine.reset()
+        reset()

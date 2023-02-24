@@ -4,37 +4,16 @@ import subprocess
 
 import click
 
-'''
-esptool.py --chip esp32 --port /dev/tty.usbserial-02031CC9 erase_flash
-esptool.py --chip esp32 --port /dev/tty.usbserial-02031CC9 --baud 460800 write_flash -z 0x1000 ~/Downloads/esp32-20220618-v1.19.1.bin
 
-# Check that you get a micropython REPL (OSX) - ctrl+a k y to kill session
-screen /dev/tty.usbserial-02031CC9 115200
+def mkdir_cmd(port, dir_path):
+    return ['ampy', '--port', port, '-d', '0.5', 'mkdir', dir_path]
 
-# Copy the config example and populate it - the wifi network details are essential
-cp embedded/config/config.example.json embedded/config/config.json
-vim embedded/config/config.json
 
-# Check the file system on your board
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 ls
-
-# Copy the config files over to your board
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 mkdir config
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/config/config.json config/config.json
-
-# Copy the executable files over to your board in order
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/rules.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/boot.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/main.py
-
-# Copy across any plugin and their associated drivers (if any) your project requires
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 mkdir drivers
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 mkdir plugins
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/drivers/__init__.py drivers/__init__.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/plugins/__init__.py plugins/__init__.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/drivers/oled.py drivers/oled.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/plugins/oled.py plugins/oled.py
-'''
+def put_cmd(port, src_path, dest_path=None):
+    cmd_list = ['ampy', '--port', port, '-d', '0.5', 'put', src_path]
+    if dest_path:
+        cmd_list.append(dest_path)
+    return cmd_list
 
 
 @click.group()
@@ -107,15 +86,9 @@ def install(port, debug):
     with open('embedded/config/config.example.json', 'r') as _file:
         config = json.loads(_file.read())
 
-    config['wifi']['essid'] = click.prompt(
-        'WiFi SSID', type=str
-    )
-    config['wifi']['password'] = click.prompt(
-        'WiFi Password', type=str
-    )
-    config['mqtt']['host'] = click.prompt(
-        'MQTT Host', type=str
-    )
+    config['wifi']['essid'] = click.prompt('WiFi SSID', type=str)
+    config['wifi']['password'] = click.prompt('WiFi Password', type=str)
+    config['mqtt']['host'] = click.prompt('MQTT Host', type=str)
     config['main']['webrepl_password'] = click.prompt(
         'Web REPL Password', type=str
     )
@@ -128,23 +101,16 @@ def install(port, debug):
     with open('embedded/config/config.json', 'w') as _file:
         _file.write(json.dumps(config, indent=4))
 
-    mkdir = lambda *args: [
-        'ampy', '--port', args[0], '-d', '0.5', 'mkdir', args[1]
-    ]
-    put = lambda *args: [
-        'ampy', '--port', args[0], '-d', '0.5', 'put', args[1], args[2]
-    ]
-
     # Write the firmware to the device
     if debug:
         click.echo(f'Writing firmware to `{port}`')
-    subprocess.run(mkdir(port, 'config'))
+    subprocess.run(mkdir_cmd(port, 'config'))
     subprocess.run(
-        put(port, 'embedded/config/config.json', 'config/config.json')
+        put_cmd(port, 'embedded/config/config.json', 'config/config.json')
     )
-    subprocess.run(put(port, 'embedded/rules.py', 'rules.py'))
-    subprocess.run(put(port, 'embedded/boot.py', 'boot.py'))
-    subprocess.run(put(port, 'embedded/main.py', 'main.py'))
+    subprocess.run(put_cmd(port, 'embedded/rules.py'))
+    subprocess.run(put_cmd(port, 'embedded/boot.py'))
+    subprocess.run(put_cmd(port, 'embedded/main.py'))
 
 
 if __name__ == '__main__':

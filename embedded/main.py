@@ -225,8 +225,8 @@ def run(mqtt, pin_config):
                 rule_params['mqtt'] = mqtt
                 rule_params['config'] = CONFIG
 
-                # Run the rule with the appropriate params and save the result to
-                # rule values
+                # Run the rule with the appropriate params and save the result
+                # to rule values
                 RULE_VALUES[pin['identifier']] = action(
                     pins[pin['identifier']], rule, **rule_params
                 )

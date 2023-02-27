@@ -1,3 +1,4 @@
+import dht
 import json
 import socket
 import time
@@ -170,19 +171,45 @@ def read_analog_bool_sample(pin, rule, **kwargs):
     return all(readings)
 
 
+def read_dht(pin, rule, **kwargs):
+    _type = kwargs.get('sensor_type')
+    if _type == 'DHT11':
+        dht_sensor = dht.DHT11(pin)
+    elif _type == 'DHT22':
+        dht_sensor = dht.DHT22(pin)
+    else:
+        return None
+
+    dht_sensor.measure()
+
+    return {
+        'temperature': dht_sensor.temperature(),
+        'humidity': dht_sensor.humidity()
+    }
+
+
 def toggle(pin, rule, **kwargs):
     on = kwargs.get('on')
     pin.on() if on else pin.off()
     return pin.value()
 
 
-def mqtt_toggle(pin, rule, **kwargs):
+def mqtt_toggle(pin, rule, retry_count=0, **kwargs):
     mqtt = kwargs.get('mqtt')
     queue = kwargs.get('queue')
 
-    mqtt.set_callback(get_mqtt_msg)
-    mqtt.subscribe(queue)
-    mqtt.check_msg()
+    if retry_count > 0:
+        mqtt.connect()
+    try:
+        mqtt.set_callback(get_mqtt_msg)
+        mqtt.subscribe(queue)
+        mqtt.check_msg()
+    except Exception:
+        if retry_count <= 3:
+            retry_count += 1
+            return mqtt_toggle(pin, rule, retry_count, **kwargs)
+        else:
+            raise Exception('MQTT Service is offline.')
 
     return int(MQTT_SUB_MSG.get(queue, 0))
 

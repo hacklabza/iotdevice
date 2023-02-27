@@ -35,14 +35,13 @@ def cli():
     help='The usb port the device is connect to'
 )
 @click.option('--bin-file', required=True, type=str, help='The path of the bin file')
-@click.option('--debug', is_flag=True)
-def flash(chip, port, bin_file, debug):
+def flash(chip, port, bin_file):
     """
     Erases the chip's flash and writes it to the chip again.
     """
+
     # Erase the flash
-    if debug:
-        click.echo('Erasing flash')
+    click.echo('Erasing flash')
     subprocess.run([
         'esptool.py',
         '--chip',
@@ -53,9 +52,7 @@ def flash(chip, port, bin_file, debug):
     ])
 
     # Flash the chip
-    if debug:
-        bin_file_name = bin_file.split('/')[-1]
-        click.echo(f'\n\nFlashing device with `{bin_file_name}`')
+    click.echo(f'\n\nFlashing device with `{bin_file.split("/")[-1]}`')
     subprocess.run([
         'esptool.py',
         '--chip',
@@ -78,32 +75,35 @@ def flash(chip, port, bin_file, debug):
     type=str,
     help='The usb port the device is connect to'
 )
-@click.option('--debug', is_flag=True)
-def install(port, debug):
+@click.option('--init-config', is_flag=True, help="Reinitialise the config file")
+def install(port, init_config):
     """
     Installs the firmware to the chip
     """
-    with open('embedded/config/config.example.json', 'r') as _file:
-        config = json.loads(_file.read())
 
-    config['wifi']['essid'] = click.prompt('WiFi SSID', type=str)
-    config['wifi']['password'] = click.prompt('WiFi Password', type=str)
-    config['mqtt']['host'] = click.prompt('MQTT Host', type=str)
-    config['main']['webrepl_password'] = click.prompt(
-        'Web REPL Password', type=str
-    )
+    if init_config:
+        with open('embedded/config/config.example.json', 'r') as _file:
+            config = json.loads(_file.read())
 
-    iot_server_host = click.prompt('Iot Server Host', type=str)
-    config['health']['url'] = (
-        f'http://{iot_server_host}:8000/health/' + '{identifier}/'
-    )
+        config['wifi']['essid'] = click.prompt('WiFi SSID', type=str)
+        config['wifi']['password'] = click.prompt('WiFi Password', type=str)
 
-    with open('embedded/config/config.json', 'w') as _file:
-        _file.write(json.dumps(config, indent=4))
+        config['mqtt']['host'] = click.prompt('MQTT Host', type=str)
+
+        iot_server_host = click.prompt('Iot Server Host', type=str)
+        config['health']['url'] = (
+            f'http://{iot_server_host}:8000/health/' + '{identifier}/'
+        )
+
+        config['main']['webrepl_password'] = click.prompt(
+            'Web REPL Password', type=str
+        )
+
+        with open('embedded/config/config.json', 'w') as _file:
+            _file.write(json.dumps(config, indent=4))
 
     # Write the firmware to the device
-    if debug:
-        click.echo(f'Writing firmware to `{port}`')
+    click.echo(f'Writing firmware to `{port}`')
     subprocess.run(mkdir_cmd(port, 'config'))
     subprocess.run(
         put_cmd(port, 'embedded/config/config.json', 'config/config.json')

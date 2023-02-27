@@ -14,6 +14,27 @@ Generic Micropython based IoT Device (ESP8266/ESP32) - Configurable via https://
 
 Either a manual install or commandline install is available - the cli is recommended. Once this is done, head over to the iotserver and create the device.
 
+#### CLI (Recommended)
+
+```bash
+# Install the python deps
+pip install -r requirements.txt
+
+# Get help
+./cli.py --help
+./cli.py flash --help
+./cli.py install --help
+
+# Flash the chip
+./cli.py flash --chip esp32 --port /dev/tty.usbserial-02031CC9 --bin-file ~/Downloads/esp32-20220618-v1.19.1.bin
+
+# Install the base firmware and follow the prompts to populate the base config file if --init-config flag is set
+./cli.py install --port /dev/tty.usbserial-02031CC9 --init-config
+
+# Connect via screen to get the IP Address of the device
+screen /dev/tty.usbserial-02031CC9 115200
+```
+
 #### Manual
 
 ```bash
@@ -56,27 +77,6 @@ ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/drivers/oled.py driv
 ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/plugins/oled.py plugins/oled.py
 
 # Connect again via screen to get the IP Address of the device
-screen /dev/tty.usbserial-02031CC9 115200
-```
-
-#### CLI
-
-```bash
-# Install the python deps
-pip install -r requirements.txt
-
-# Get help
-./cli.py --help
-./cli.py flash --help
-./cli.py install --help
-
-# Flash the chip
-./cli.py flash --chip esp32 --port /dev/tty.usbserial-02031CC9 --bin-file ~/Downloads/esp32-20220618-v1.19.1.bin --debug
-
-# Install the base firmware
-./cli.py install --port /dev/tty.usbserial-02031CC9 --debug
-
-# Connect via screen to get the IP Address of the device
 screen /dev/tty.usbserial-02031CC9 115200
 ```
 

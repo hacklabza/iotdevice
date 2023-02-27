@@ -54,7 +54,7 @@ def set_time(mqtt, time_config):
     )
 
 
-def connect_mqtt(mqtt_config):
+def init_mqtt(mqtt_config):
     try:
         from umqtt.simple import MQTTClient
     except ImportError:
@@ -64,7 +64,7 @@ def connect_mqtt(mqtt_config):
     mqtt = MQTTClient(
         client_id=mqtt_config['client_id'].format(identifier=DEVICE_ID),
         server=mqtt_config['host'],
-        keepalive=mqtt_config.get('keepalive', 0)
+        keepalive=mqtt_config.get('keepalive', 65535)
     )
 
     # Setup last will to detect when the device disconnects ungracefully
@@ -77,22 +77,42 @@ def connect_mqtt(mqtt_config):
         )
 
     mqtt.connect()
+
     log_message(
         mqtt,
-        'Connected to MQTT at {host}'.format(host=mqtt_config['host']),
+        'Initilised MQTT Client at {host}'.format(host=mqtt_config['host']),
         DEBUG
     )
+
     return mqtt
 
 
-def publish_mqtt_message(mqtt, mqtt_queue, message):
-    mqtt.publish(mqtt_queue, message)
+def publish_mqtt_message(mqtt, mqtt_queue, message, retry_count=0):
+    if retry_count > 0:
+        mqtt.connect()
+    try:
+        mqtt.publish(mqtt_queue, message)
+    except Exception:
+        if retry_count <= 3:
+            retry_count += 1
+            publish_mqtt_message(mqtt, mqtt_queue, message, retry_count)
+        else:
+            raise Exception('MQTT Service is offline.')
 
 
-def subscribe_mqtt_message(mqtt, mqtt_queue, callback):
-    mqtt.set_callback(callback)
-    mqtt.subscribe(mqtt_queue)
-    mqtt.check_msg()
+def subscribe_mqtt_message(mqtt, mqtt_queue, callback, retry_count=0):
+    if retry_count > 0:
+        mqtt.connect()
+    try:
+        mqtt.set_callback(callback)
+        mqtt.subscribe(mqtt_queue)
+        mqtt.check_msg()
+    except Exception:
+        if retry_count <= 3:
+            retry_count += 1
+            subscribe_mqtt_message(mqtt, mqtt_queue, callback, retry_count)
+        else:
+            raise Exception('MQTT Service is offline.')
 
 
 def log_message(mqtt, message, level):
@@ -154,13 +174,17 @@ def run(mqtt, pin_config):
                     atten=machine.ADC.ATTN_11DB
                 )
             else:
-                pins[pin['identifier']] = machine.Signal(
-                    machine.Pin(
-                        pin['pin_number'],
-                        machine.Pin.IN if pin['read'] else machine.Pin.OUT
-                    ),
-                    invert=False
-                )
+                if pin['read']:
+                    pins[pin['identifier']] = machine.Pin(
+                        pin['pin_number'], machine.Pin.IN
+                    )
+                else:
+                    pins[pin['identifier']] = machine.Signal(
+                        machine.Pin(
+                            pin['pin_number'], machine.Pin.OUT
+                        ),
+                        invert=False
+                    )
         else:
             pins[pin['identifier']] = None
 
@@ -195,6 +219,7 @@ def run(mqtt, pin_config):
                                     RULE_VALUES[v]
                                 )
                             values.append(all(split_values))
+                            # TODO: Handle conditions in a dict
                         else:
                             values.append(RULE_VALUES[value_item])
 
@@ -278,7 +303,7 @@ if __name__ == '__main__':
 
         # Connects to the configured mqtt queue
         mqtt_config = CONFIG['mqtt']
-        mqtt = connect_mqtt(mqtt_config)
+        mqtt = init_mqtt(mqtt_config)
 
         # Set the local time
         set_time(mqtt, CONFIG['time'])

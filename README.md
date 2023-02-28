@@ -84,72 +84,156 @@ screen /dev/tty.usbserial-02031CC9 115200
 
 ```json
 {
-    "wifi": {
-        "essid": "********",
-        "password": "********",
-        "retry_count": 10
-    },
-    "mqtt": {
-        "client_id": "my-smartgarden",
-        "host": "192.168.1.5",
-        "username": null,
-        "password": null,
-        "ssl_enabled": false
-    },
-    "main": {
-        "process_interval": 15
-    },
-    "time": {
-        "server": "za.pool.ntp.org"
-    },
-    "pins": [
-        {
-            "pin_number": null,
-            "name": "Day Timer",
-            "identifier": "day_timer",
-            "analog": false,
-            "read": true,
-            "rules": [
-                {
-                    "action": "timer",
-                    "input": {
-                        "start_time": "07:00",
-                        "end_time": "15:00"
-                    }
-                }
-            ]
-        },
-        {
-            "pin_number": 5,
-            "name": "Soil Moisture Sensor",
-            "identifier": "soil_moisture_sensor",
-            "analog": false,
-            "read": true,
-            "rules": [
-                {
-                    "action": "read_bool_sample",
-                    "input": {
-                        "reverse": true,
-                        "sample_size": 5
-                    }
-                }
-            ]
-        },
-        {
-            "pin_number": 4,
-            "name": "Solenid Relay",
-            "identifier": "solenoid_relay",
-            "analog": false,
-            "read": false,
-            "rules": [
-                {
-                    "action": "toggle",
-                    "input": {
-                        "on": ["soil_moisture_sensor", "day_timer"]
-                    }
-                }
-            ]
+  "wifi": {
+    "essid": "********",
+    "password": "********",
+    "retry_count": 10
+  },
+  "mqtt": {
+    "client_id": "b6d49b8d-c31f-4809-a955-a814de6ab3f3}",
+    "host": "192.168.1.5",
+    "username": null,
+    "password": null,
+    "ssl_enabled": false,
+    "lastwill": {
+      "topic": "iot-devices/b6d49b8d-c31f-4809-a955-a814de6ab3f3/logs",
+      "message": "Device disconnected from MQTT"
+    }
+  },
+  "logging": {
+    "level": "warning"
+  },
+  "main": {
+    "identifier": "b6d49b8d-c31f-4809-a955-a814de6ab3f3",
+    "process_interval": 15,
+    "webrepl_password": "ae3200ef1"
+  },
+  "time": {
+    "server": "za.pool.ntp.org"
+  },
+  "health": {
+    "url": "http://192.168.0.101:8000/health/b6d49b8d-c31f-4809-a955-a814de6ab3f3/"
+  },
+  "pins": [
+    {
+      "pin_number": null,
+      "name": "Day Timer",
+      "identifier": "day_timer",
+      "analog": false,
+      "read": true,
+      "rule": {
+        "action": "timer",
+        "input": {
+          "start_time": "07:00",
+          "end_time": "15:00"
         }
-    ]
+      }
+    },
+    {
+      "pin_number": 5,
+      "name": "Soil Moisture Sensor",
+      "identifier": "soil_moisture_sensor",
+      "analog": false,
+      "read": true,
+      "rule": {
+        "action": "read_bool_sample",
+        "input": {
+          "reverse": true,
+          "sample_size": 5
+        }
+      }
+    },
+    {
+      "pin_number": null,
+      "name": "Weather Service Forecast",
+      "identifier": "weather_service_forecast",
+      "analog": false,
+      "read": true,
+      "rule": {
+        "action": "service",
+        "input": {
+          "url": "http://192.168.1.5:8000/api/devices/locations/1/weather/?type=forecast",
+          "auth_header": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXX"
+        }
+      }
+    },
+    {
+      "pin_number": null,
+      "name": "Weather Service Current",
+      "identifier": "weather_service_current",
+      "analog": false,
+      "read": true,
+      "rule": {
+        "action": "service",
+        "input": {
+          "url": "http://192.168.1.5:8000/api/devices/locations/1/weather/?type=current",
+          "auth_header": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXX"
+        }
+      }
+    },
+    {
+      "pin_number": null,
+      "name": "MQTT Toggle",
+      "identifier": "mqtt_toggle",
+      "analog": false,
+      "read": true,
+      "rule": {
+        "action": "mqtt_toggle",
+        "input": {
+          "topic": "iot-devices/b6d49b8d-c31f-4809-a955-a814de6ab3f3/toggle"
+        }
+      }
+    },
+    {
+      "pin_number": 4,
+      "name": "Solenid Relay",
+      "identifier": "solenoid_relay",
+      "analog": false,
+      "read": false,
+      "rule": {
+        "action": "toggle",
+        "input": {
+          "on": {
+            "conditions": {
+              "must": {
+                "soil_moisture_sensor": {
+                  "operator": "eq",
+                  "value": true
+                },
+                "timer": {
+                  "operator": "eq",
+                  "value": true
+                },
+                "weather_service_forecast.0.rain": {
+                  "operator": "eq",
+                  "value": false
+                },
+                 "weather_service_forecast.1.rain": {
+                  "operator": "eq",
+                  "value": false
+                },
+                "weather_service_current.temperature": {
+                  "operator": "gt",
+                  "value": 10
+                },
+                "weather_service_current.rain": {
+                  "operator": "eq",
+                  "value": false
+                }
+              },
+              "should": {
+                "mqtt_toggle": {
+                  "operator": "eq",
+                  "value": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }
 ```
+
+I.e. The solenoid relay will switch on if the soil moisture returns dry, the time is between 07:00 and 15:00, it will not rain today and tomorrow, the temperature is above 10 and it is not currently raining or it has been toggled on by via MQTT (override).

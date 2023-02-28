@@ -156,6 +156,54 @@ def health_check(mqtt):
     mqtt.ping()
 
 
+def find_xpath_value(response, xpaths):
+    xpath = xpaths.pop()  # paths must be reversed before passing it in
+
+    try:
+        response = response[int(xpath)]
+    except ValueError:
+        response = response[xpath]
+    except (KeyError, IndexError):
+        return None
+
+    if not len(xpaths):
+        return response
+
+    return find_xpath_value(response, xpaths)
+
+
+def evaluate_condition(input, operator, value):
+    try:
+        if operator == 'eq':
+            return input == value
+        elif operator == 'gt':
+            return input > value
+        elif operator == 'lt':
+            return input < value
+    except TypeError:
+        return False
+
+
+def handle_conditions(rule_values, input_value):
+    """
+    Returns a dict of condition boolean values to be evaluated.
+    """
+    condition_values = {'must': [], 'should': []}
+    for condition_type, conditions in input_value['conditions'].items():
+        if condition_type in condition_values:
+            for pin_identifier, condition in conditions.items():
+                xpaths = pin_identifier.split('.')
+                xpaths.reverse()
+                condition_values[condition_type].append(
+                    evaluate_condition(
+                        find_xpath_value(rule_values, xpaths),
+                        **condition
+                    )
+                )
+
+    return condition_values
+
+
 def run(mqtt, pin_config):
 
     log_message(mqtt, 'Device started.', DEBUG)
@@ -202,40 +250,22 @@ def run(mqtt, pin_config):
             # Retrieve method parms including return values from previous
             # actions
             rule_params = {}
-            for key, value in rule['input'].items():
+            for input_key, input_value in rule['input'].items():
 
-                # Determine if the input value is a return value from a
-                # previous action or set the static value
-                if type(value) == list:
-                    value_items = value
-                    operator = 'and'
-                    values = []
-                    for value_item in value_items:
-                        if type(value_item) == list:
-                            operator = 'or'
-                            split_values = []
-                            for v in value_item:
-                                split_values.append(
-                                    RULE_VALUES[v]
-                                )
-                            values.append(all(split_values))
-                            # TODO: Handle conditions in a dict
-                        else:
-                            values.append(RULE_VALUES[value_item])
-
-                    if operator == 'or':
-                        rule_params[key] = any(values)
-                    else:
-                        rule_params[key] = all(values)
-
-                elif type(value) == dict:
-                    rule_params[key] = value
+                # Determine if the input contains a condition and evalute the
+                # condition against the previously stored rule values.
+                if type(input_value) == dict and 'conditions' in input_value:
+                    condition_values = handle_conditions(
+                        RULE_VALUES,
+                        input_value
+                    )
+                    rule_params[input_key] = any([
+                        all(condition_values['must']),
+                        any(condition_values['should'])
+                    ])
 
                 else:
-                    if value in RULE_VALUES:
-                        rule_params[key] = RULE_VALUES[value]
-                    else:
-                        rule_params[key] = value
+                    rule_params[input_key] = input_value
 
             if run_count % pin.get('interval', 1) == 0:
                 log_message(

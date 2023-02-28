@@ -54,34 +54,6 @@ def get_service_response(url, auth_header=None):
     return None
 
 
-def find_xpath_value(response, xpaths):
-    xpath = xpaths.pop()  # paths must be reversed before passing it in
-
-    try:
-        response = response[int(xpath)]
-    except ValueError:
-        response = response[xpath]
-    except (KeyError, IndexError):
-        return None
-
-    if not len(xpaths):
-        return response
-
-    return find_xpath_value(response, xpaths)
-
-
-def run_condition(value, condition):
-    try:
-        if condition['operator'] == 'eq':
-            return value == condition['value']
-        elif condition['operator'] == 'gt':
-            return value > condition['value']
-        elif condition['operator'] == 'lt':
-            return value < condition['value']
-    except TypeError:
-        return False
-
-
 def read(pin, rule, **kwargs):
     reverse = kwargs.get('reverse', False)
     if reverse:
@@ -196,13 +168,13 @@ def toggle(pin, rule, **kwargs):
 
 def mqtt_toggle(pin, rule, retry_count=0, **kwargs):
     mqtt = kwargs.get('mqtt')
-    queue = kwargs.get('queue')
+    topic = kwargs.get('topic')
 
     if retry_count > 0:
         mqtt.connect()
     try:
         mqtt.set_callback(get_mqtt_msg)
-        mqtt.subscribe(queue)
+        mqtt.subscribe(topic)
         mqtt.check_msg()
     except Exception:
         if retry_count <= 3:
@@ -211,7 +183,7 @@ def mqtt_toggle(pin, rule, retry_count=0, **kwargs):
         else:
             raise Exception('MQTT Service is offline.')
 
-    return int(MQTT_SUB_MSG.get(queue, 0))
+    return int(MQTT_SUB_MSG.get(topic, 0))
 
 
 def timer(pin, rule, **kwargs):
@@ -229,15 +201,5 @@ def timer(pin, rule, **kwargs):
 def service(pin, rule, **kwargs):
     url = kwargs.get('url')
     auth_header = kwargs.get('auth_header')
-    condition = kwargs.get('condition')
 
-    response = get_service_response(url, auth_header)
-    value = None
-    if response is not None:
-        xpaths = condition['xpath'].split('.')
-        xpaths.reverse()
-        value = find_xpath_value(response, xpaths)
-
-        return run_condition(value, condition)
-
-    return False
+    return get_service_response(url, auth_header)

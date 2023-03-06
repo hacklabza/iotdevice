@@ -313,8 +313,6 @@ def run(mqtt, pin_config):
 
         run_count += 1
 
-        gc.collect()
-
 
 if __name__ == '__main__':
 

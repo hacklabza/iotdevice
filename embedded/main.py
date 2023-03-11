@@ -1,8 +1,8 @@
-import gc
 import hashlib
 import json
 import ntptime
 import machine
+import sys
 import time
 import upip
 
@@ -204,10 +204,21 @@ def handle_conditions(rule_values, input_value):
     return condition_values
 
 
-def run(mqtt, pin_config):
+def get_i2c_pins(read):
+    """
+    Return scl, sda pins to be used in an i2c inteface.
+    """
+    pin_mode = machine.Pin.IN if read else machine.Pin.OUT
+    return {
+        'esp8266': (machine.Pin(5, pin_mode), machine.Pin(4, pin_mode)),
+        'esp32': (machine.Pin(22, pin_mode), machine.Pin(21, pin_mode)),
+    }[sys.platform]
 
-    log_message(mqtt, 'Device started.', DEBUG)
 
+def create_pins(pin_config):
+    """
+    Initialise pins based on the configured type.
+    """
     pins = {}
     for pin in pin_config:
 
@@ -221,6 +232,7 @@ def run(mqtt, pin_config):
                     machine.Pin(pin['pin_number']),
                     atten=machine.ADC.ATTN_11DB
                 )
+
             else:
                 if pin['read']:
                     pins[pin['identifier']] = machine.Pin(
@@ -233,8 +245,24 @@ def run(mqtt, pin_config):
                         ),
                         invert=False
                     )
+
+        elif pin['i2c']:
+            scl, sda = get_i2c_pins(read=pin['read'])
+            pins[pin['identifier']] = machine.I2C(
+                scl=scl, sda=sda, freq=100000
+            )
+
         else:
             pins[pin['identifier']] = None
+
+    return pins
+
+
+def run(mqtt, pin_config):
+
+    log_message(mqtt, 'Device started.', DEBUG)
+
+    pins = create_pins(pin_config)
 
     run_count = 0
     while True:

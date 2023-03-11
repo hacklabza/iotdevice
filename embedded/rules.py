@@ -1,4 +1,3 @@
-import dht
 import json
 import socket
 import time
@@ -144,6 +143,8 @@ def read_analog_bool_sample(pin, rule, **kwargs):
 
 
 def read_dht(pin, rule, **kwargs):
+    import dht
+
     _type = kwargs.get('sensor_type')
     if _type == 'DHT11':
         dht_sensor = dht.DHT11(pin)
@@ -157,6 +158,24 @@ def read_dht(pin, rule, **kwargs):
     return {
         'temperature': dht_sensor.temperature(),
         'humidity': dht_sensor.humidity()
+    }
+
+
+def read_bmp180(pin, rule, **kwargs):
+    from drivers.bmp180 import BMP180
+
+    oversample = kwargs.get('oversample', 2)
+    baseline = kwargs.get('baseline', 101325)
+
+    bmp180_sensor = BMP180(pin)
+
+    bmp180_sensor.oversample = oversample
+    bmp180_sensor.baseline = baseline
+
+    return {
+        'temperature': bmp180_sensor.temperature,
+        'pressure': bmp180_sensor.pressure,
+        'altitude': bmp180_sensor.altitude
     }
 
 

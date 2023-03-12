@@ -208,10 +208,9 @@ def get_i2c_pins(read):
     """
     Return scl, sda pins to be used in an i2c inteface.
     """
-    pin_mode = machine.Pin.IN if read else machine.Pin.OUT
     return {
-        'esp8266': (machine.Pin(5, pin_mode), machine.Pin(4, pin_mode)),
-        'esp32': (machine.Pin(22, pin_mode), machine.Pin(21, pin_mode)),
+        'esp8266': (machine.Pin(5), machine.Pin(4)),
+        'esp32': (machine.Pin(22), machine.Pin(21)),
     }[sys.platform]
 
 
@@ -248,8 +247,8 @@ def create_pins(pin_config):
 
         elif pin['i2c']:
             scl, sda = get_i2c_pins(read=pin['read'])
-            pins[pin['identifier']] = machine.I2C(
-                scl=scl, sda=sda, freq=100000
+            pins[pin['identifier']] = machine.SoftI2C(
+                scl=scl, sda=sda, freq=100_000
             )
 
         else:

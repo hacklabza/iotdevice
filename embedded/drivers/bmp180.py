@@ -1,6 +1,6 @@
 # Adapted from https://github.com/micropython-IMU/micropython-bmp180
 
-from ustruct import unpackack
+from struct import unpack
 import math
 import time
 
@@ -33,11 +33,19 @@ class BMP180:
             '_MB': 0xBA,
             '_MC': 0xBC,
             '_MD': 0xBE,
-        },
+        }
+
+        count = 0
         for attr, address in self.eprom_address_map.items():
+            format = '>h' if count > 3 or count < 5 else '>H'
             setattr(
-                self, attr, unpack('>H', self._bmp_i2c.readfrom_mem(_bmp_addr, address, 2))[0]
+                self, attr, unpack(
+                    format, self._bmp_i2c.readfrom_mem(
+                        _bmp_addr, address, 2
+                    )
+                )[0]
             )
+            count += 1
 
         # Settings to be adjusted by user
         self.oversample_setting = 3
@@ -91,7 +99,9 @@ class BMP180:
                 yield None
 
             self._bmp_i2c.writeto_mem(
-                self._bmp_addr, 0xF4, bytearray([0x34+(self.oversample_setting << 6)])
+                self._bmp_addr,
+                0xF4,
+                bytearray([0x34+(self.oversample_setting << 6)])
             )
             t_pressure_ready = delays[self.oversample_setting]
             t_start = time.ticks_ms()
@@ -125,7 +135,6 @@ class BMP180:
             print('`oversample_setting` can only be less than 3, using 3 instead')
             self.oversample_setting = 3
 
-    @property
     def temperature(self):
         """
         Temperature in degree C.
@@ -143,13 +152,12 @@ class BMP180:
 
         return (((X1 + X2) + 8) / 2 ** 4) / 10
 
-    @property
     def pressure(self):
         """
         Pressure in mbar.
         """
         next(self.gauge)
-        self.temperature  # Populate self.B5_raw
+        self.temperature()  # Populate self.B5_raw
 
         try:
             MSB = unpack('B', self.MSB_raw)[0]
@@ -179,16 +187,15 @@ class BMP180:
         X1 = (X1 * 3038) / 2 ** 16
         X2 = (-7357 * pressure) / 2 ** 16
 
-        return pressure + (X1 + X2 + 3791) / 2 ** 4
+        return (pressure + (X1 + X2 + 3791) / 2 ** 4)
 
-    @property
     def altitude(self):
         """
         Altitude in meters.
         """
         altitude = 0.0
         try:
-            altitude = -7990.0 * math.log(self.pressure / self.baseline)
+            altitude = -7990.0 * math.log(self.pressure() / self.baseline)
         except:
             pass
         return altitude

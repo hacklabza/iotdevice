@@ -173,9 +173,9 @@ def read_bmp180(pin, rule, **kwargs):
     bmp180_sensor.baseline = baseline
 
     return {
-        'temperature': bmp180_sensor.temperature,
-        'pressure': bmp180_sensor.pressure,
-        'altitude': bmp180_sensor.altitude
+        'temperature': f'{bmp180_sensor.temperature():.1f}',
+        'pressure': int(bmp180_sensor.pressure() / 100),
+        'altitude': int(bmp180_sensor.altitude())
     }
 
 

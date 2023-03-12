@@ -86,7 +86,12 @@ def install(port, init_config):
             config = json.loads(_file.read())
 
         config['wifi']['essid'] = click.prompt('WiFi SSID', type=str)
-        config['wifi']['password'] = click.prompt('WiFi Password', type=str)
+        config['wifi']['password'] = click.prompt(
+            'WiFi Password',
+            type=str,
+            hide_input=True,
+            confirmation_prompt=True
+        )
 
         config['mqtt']['host'] = click.prompt('MQTT Host', type=str)
 
@@ -96,8 +101,15 @@ def install(port, init_config):
         )
 
         config['main']['webrepl_password'] = click.prompt(
-            'Web REPL Password', type=str
+            'Web REPL Password',
+            type=str,
+            hide_input=True,
+            confirmation_prompt=True
         )
+
+        drivers = click.prompt('List of drivers to import', type=str)
+        if drivers:
+            config['drivers'] = [d.strip() for d in drivers.split(',')]
 
         with open('embedded/config/config.json', 'w') as _file:
             _file.write(json.dumps(config, indent=4))
@@ -108,6 +120,24 @@ def install(port, init_config):
     subprocess.run(
         put_cmd(port, 'embedded/config/config.json', 'config/config.json')
     )
+    if config['drivers']:
+        subprocess.run(mkdir_cmd(port, 'drivers'))
+        subprocess.run(
+            put_cmd(
+                port,
+                'embedded/drivers/__init__.py',
+                'drivers/__init__.py'
+            )
+        )
+        for driver_name in config['drivers']:
+            subprocess.run(
+                put_cmd(
+                    port,
+                    f'embedded/drivers/{driver_name}.py',
+                    f'drivers/{driver_name}.py'
+                )
+            )
+
     subprocess.run(put_cmd(port, 'embedded/rules.py'))
     subprocess.run(put_cmd(port, 'embedded/boot.py'))
     subprocess.run(put_cmd(port, 'embedded/main.py'))

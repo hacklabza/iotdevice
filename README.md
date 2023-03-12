@@ -70,11 +70,9 @@ ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/main.py
 
 # Copy across any plugin and their associated drivers (if any) your project requires
 ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 mkdir drivers
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 mkdir plugins
 ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/drivers/__init__.py drivers/__init__.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/plugins/__init__.py plugins/__init__.py
+ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/drivers/bmp180.py drivers/bmp180.py
 ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/drivers/oled.py drivers/oled.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/plugins/oled.py plugins/oled.py
 
 # Connect again via screen to get the IP Address of the device
 screen /dev/tty.usbserial-02031CC9 115200

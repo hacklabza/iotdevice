@@ -24,6 +24,7 @@ ve/
 
 # config
 embedded/config/config.json
+embedded/config/config.init
 
 # misc
 *.swp

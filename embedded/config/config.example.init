@@ -1,0 +1,6 @@
+wifi_essid: my-ap
+wifi_password: wifipass
+mqtt_host: 192.168.0.101
+iot_server_host: 192.168.0.101
+webrepl_password: replpass
+drivers: bmp180

@@ -75,8 +75,14 @@ def flash(chip, port, bin_file):
     type=str,
     help='The usb port the device is connect to'
 )
-@click.option('--init-config', is_flag=True, help="Reinitialise the config file")
-def install(port, init_config):
+@click.option('--init-config', is_flag=True, help='Reinitialise the config file')
+@click.option(
+    '--config-file',
+    type=str,
+    required=False,
+    help='Reinitialise config from a file'
+)
+def install(port, init_config, config_file):
     """
     Installs the firmware to the chip
     """
@@ -85,31 +91,54 @@ def install(port, init_config):
         with open('embedded/config/config.example.json', 'r') as _file:
             config = json.loads(_file.read())
 
-        config['wifi']['essid'] = click.prompt('WiFi SSID', type=str)
-        config['wifi']['password'] = click.prompt(
-            'WiFi Password',
-            type=str,
-            hide_input=True,
-            confirmation_prompt=True
-        )
+        if config_file:
+            with open(config_file, 'r') as _file:
+                init_config = dict(
+                    [item.strip().split(': ') for item in _file.readlines()]
+                )
 
-        config['mqtt']['host'] = click.prompt('MQTT Host', type=str)
+            config['wifi']['essid'] = init_config['wifi_essid']
+            config['wifi']['password'] = init_config['wifi_password']
 
-        iot_server_host = click.prompt('Iot Server Host', type=str)
-        config['health']['url'] = (
-            f'http://{iot_server_host}:8000/health/' + '{identifier}/'
-        )
+            config['mqtt']['host'] = init_config['mqtt_host']
 
-        config['main']['webrepl_password'] = click.prompt(
-            'Web REPL Password',
-            type=str,
-            hide_input=True,
-            confirmation_prompt=True
-        )
+            iot_server_host = init_config['iot_server_host']
+            config['health']['url'] = (
+                f'http://{iot_server_host}:8000/health/' + '{identifier}/'
+            )
 
-        drivers = click.prompt('List of drivers to import', type=str)
-        if drivers:
-            config['drivers'] = [d.strip() for d in drivers.split(',')]
+            config['main']['webrepl_password'] = init_config['webrepl_password']
+
+            drivers = init_config.get('drivers', None)
+            if drivers:
+                config['drivers'] = [d.strip() for d in drivers.split(',')]
+
+        else:
+            config['wifi']['essid'] = click.prompt('WiFi SSID', type=str)
+            config['wifi']['password'] = click.prompt(
+                'WiFi Password',
+                type=str,
+                hide_input=True,
+                confirmation_prompt=True
+            )
+
+            config['mqtt']['host'] = click.prompt('MQTT Host', type=str)
+
+            iot_server_host = click.prompt('Iot Server Host', type=str)
+            config['health']['url'] = (
+                f'http://{iot_server_host}:8000/health/' + '{identifier}/'
+            )
+
+            config['main']['webrepl_password'] = click.prompt(
+                'Web REPL Password',
+                type=str,
+                hide_input=True,
+                confirmation_prompt=True
+            )
+
+            drivers = click.prompt('List of drivers to import', type=str)
+            if drivers:
+                config['drivers'] = [d.strip() for d in drivers.split(',')]
 
         with open('embedded/config/config.json', 'w') as _file:
             _file.write(json.dumps(config, indent=4))

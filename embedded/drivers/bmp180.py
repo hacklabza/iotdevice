@@ -1,11 +1,10 @@
 # Adapted from https://github.com/micropython-IMU/micropython-bmp180
 
-from struct import unpack
-import math
+from ustruct import unpack
 import time
 
 
-class BMP180:
+class BMP180(object):
     """
     Module for the BMP180 pressure sensor.
     """
@@ -95,7 +94,7 @@ class BMP180:
                 yield None
             try:
                 self.UT_raw = self._bmp_i2c.readfrom_mem(self._bmp_addr, 0xF6, 2)
-            except:
+            except Exception:
                 yield None
 
             self._bmp_i2c.writeto_mem(
@@ -112,7 +111,7 @@ class BMP180:
                 self.MSB_raw = self._bmp_i2c.readfrom_mem(self._bmp_addr, 0xF6, 1)
                 self.LSB_raw = self._bmp_i2c.readfrom_mem(self._bmp_addr, 0xF7, 1)
                 self.XLSB_raw = self._bmp_i2c.readfrom_mem(self._bmp_addr, 0xF8, 1)
-            except:
+            except Exception:
                 yield None
 
             yield True
@@ -132,29 +131,29 @@ class BMP180:
         if value in range(4):
             self.oversample_setting = value
         else:
-            print('`oversample_setting` can only be less than 3, using 3 instead')
+            print('`oversample_setting` can only be less than 3, setting to 3')
             self.oversample_setting = 3
 
     def temperature(self):
         """
-        Temperature in degree C.
+        Temperature in degrees C.
         """
         next(self.gauge)
         try:
             UT = unpack('>H', self.UT_raw)[0]
-        except:
+        except Exception:
             return 0.0
 
-        X1 = (UT - self._AC6) * self._AC5 / 2 ** 15
-        X2 = self._MC * 2 ** 11 / (X1 + self._MD)
+        X1 = (UT - self._AC6) * (self._AC5 / (2 ** 15))
+        X2 = (self._MC * (2 ** 11)) / (X1 + self._MD)
 
-        self.B5_raw = X1+X2
+        self.B5_raw = X1 + X2
 
-        return (((X1 + X2) + 8) / 2 ** 4) / 10
+        return ((self.B5_raw + 8) / (2 ** 4)) / 10
 
-    def pressure(self):
+    def absolute_pressure(self):
         """
-        Pressure in mbar.
+        Asolute pressure in pascal.
         """
         next(self.gauge)
         self.temperature()  # Populate self.B5_raw
@@ -163,19 +162,19 @@ class BMP180:
             MSB = unpack('B', self.MSB_raw)[0]
             LSB = unpack('B', self.LSB_raw)[0]
             XLSB = unpack('B', self.XLSB_raw)[0]
-        except:
+        except Exception:
             return 0.0
 
         UP = ((MSB << 16) + (LSB << 8) + XLSB) >> (8 - self.oversample_setting)
         B6 = self.B5_raw - 4000
-        X1 = (self._B2 * (B6 ** 2 / 2 ** 12)) / 2 ** 11
-        X2 = self._AC2 * B6 / 2 ** 11
+        X1 = (self._B2 * ((B6 ** 2) / (2 ** 12))) / (2 ** 11)
+        X2 = (self._AC2 * B6) / (2 ** 11)
         X3 = X1 + X2
         B3 = ((int((self._AC1 * 4 + X3)) << self.oversample_setting) + 2) / 4
-        X1 = self._AC3 * B6 / 2 ** 13
-        X2 = (self._B1 * (B6 ** 2 / 2 ** 12)) / 2 ** 16
-        X3 = ((X1 + X2) + 2) / 2 ** 2
-        B4 = abs(self._AC4) * (X3 + 32768) / 2 ** 15
+        X1 = (self._AC3 * B6) / (2 ** 13)
+        X2 = (self._B1 * (B6 ** 2 / 2 ** 12)) / (2 ** 16)
+        X3 = ((X1 + X2) + 2) / (2 ** 2)
+        B4 = abs(self._AC4) * (X3 + 32768) / (2 ** 15)
         B7 = (abs(UP) - B3) * (50000 >> self.oversample_setting)
 
         if B7 < 0x80000000:
@@ -183,11 +182,24 @@ class BMP180:
         else:
             pressure = (B7 / B4) * 2
 
-        X1 = (pressure / 2 ** 8) ** 2
-        X1 = (X1 * 3038) / 2 ** 16
-        X2 = (-7357 * pressure) / 2 ** 16
+        X1 = (pressure / (2 ** 8)) ** 2
+        X1 = (X1 * 3038) / (2 ** 16)
+        X2 = (-7357 * pressure) / (2 ** 16)
 
-        return (pressure + (X1 + X2 + 3791) / 2 ** 4)
+        return (pressure + (X1 + X2 + 3791) / (2 ** 4))
+
+    def pressure(self):
+        """
+        Sealevel compensated pressure in pascal.
+        """
+        pressure = 0.0
+        try:
+            pressure = (
+                self.absolute_pressure() / pow(1 - (self.altitude() / 44330.0), 2.9382)
+            )
+        except ZeroDivisionError:
+            pass
+        return pressure
 
     def altitude(self):
         """
@@ -195,7 +207,9 @@ class BMP180:
         """
         altitude = 0.0
         try:
-            altitude = -7990.0 * math.log(self.pressure() / self.baseline)
-        except:
+            altitude = (
+                44330 * (1 - ((self.absolute_pressure() / self.baseline) ** 0.1903))
+            )
+        except ZeroDivisionError:
             pass
         return altitude

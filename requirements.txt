@@ -2,7 +2,7 @@ adafruit-ampy==1.1.0
 bitstring==3.1.9
 cffi==1.14.6
 click==8.0.1
-cryptography==3.4.8
+cryptography==39.0.1
 ecdsa==0.17.0
 esptool==3.1
 pycparser==2.20

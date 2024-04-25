@@ -18,6 +18,8 @@ Either a manual install or commandline install is available - the cli is recomme
 
 ```bash
 # Install the python deps
+python3 -m venv ve
+. ve/bin/activate
 pip install -r requirements.txt
 
 # Get help
@@ -26,7 +28,7 @@ pip install -r requirements.txt
 ./cli.py install --help
 
 # Flash the chip
-./cli.py flash --chip esp32 --port /dev/tty.usbserial-02031CC9 --bin-file ~/Downloads/esp32-20220618-v1.19.1.bin
+./cli.py flash --chip esp32 --port /dev/tty.usbserial-02031CC9 --bin-file ~/Downloads/ESP32_GENERIC-20231005-v1.21.0.bin
 
 # Install the base firmware and follow the prompts to populate the base config file if --init-config flag is set
 ./cli.py install --port /dev/tty.usbserial-02031CC9 --init-config
@@ -47,7 +49,7 @@ esptool.py --port /dev/tty.usbserial-01A7B50C --baud 460800 write_flash --flash_
 
 # OR flash your board with the latest version of micropython for ESP32 (https://micropython.org/download/esp32/)
 esptool.py --chip esp32 --port /dev/tty.usbserial-02031CC9 erase_flash
-esptool.py --chip esp32 --port /dev/tty.usbserial-02031CC9 --baud 460800 write_flash -z 0x1000 ~/Downloads/esp32-20220618-v1.19.1.bin
+esptool.py --chip esp32 --port /dev/tty.usbserial-02031CC9 --baud 460800 write_flash -z 0x1000 ~/Downloads/ESP32_GENERIC-20231005-v1.21.0.bin
 
 # Check that you get a micropython REPL (OSX) - ctrl+a k y to kill session
 screen /dev/tty.usbserial-02031CC9 115200

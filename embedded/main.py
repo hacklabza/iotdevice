@@ -4,7 +4,7 @@ import ntptime
 import machine
 import sys
 import time
-import upip
+import mip
 
 import rules
 
@@ -58,7 +58,7 @@ def init_mqtt(mqtt_config):
     try:
         from umqtt.simple import MQTTClient
     except ImportError:
-        upip.install('micropython-umqtt.simple')
+        mip.install('micropython-umqtt.simple')
         from umqtt.simple import MQTTClient
 
     mqtt = MQTTClient(

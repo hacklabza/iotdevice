@@ -114,29 +114,29 @@ def install(port, init_config, config_file):
                 config['drivers'] = [d.strip() for d in drivers.split(',')]
 
         else:
-            config['wifi']['essid'] = click.prompt('WiFi SSID', type=str)
+            config['wifi']['essid'] = click.prompt('WiFi SSID', type=click.STRING)
             config['wifi']['password'] = click.prompt(
                 'WiFi Password',
-                type=str,
+                type=click.STRING,
                 hide_input=True,
                 confirmation_prompt=True
             )
 
-            config['mqtt']['host'] = click.prompt('MQTT Host', type=str)
+            config['mqtt']['host'] = click.prompt('MQTT Host', type=click.STRING)
 
-            iot_server_host = click.prompt('Iot Server Host', type=str)
+            iot_server_host = click.prompt('Iot Server Host', type=click.STRING)
             config['health']['url'] = (
                 f'http://{iot_server_host}:8000/health/' + '{identifier}/'
             )
 
             config['main']['webrepl_password'] = click.prompt(
                 'Web REPL Password',
-                type=str,
+                type=click.STRING,
                 hide_input=True,
                 confirmation_prompt=True
             )
 
-            drivers = click.prompt('List of drivers to import', type=str)
+            drivers = click.prompt('List of drivers to import', type=click.STRING, default='')
             if drivers:
                 config['drivers'] = [d.strip() for d in drivers.split(',')]
 
@@ -149,7 +149,7 @@ def install(port, init_config, config_file):
     subprocess.run(
         put_cmd(port, 'embedded/config/config.json', 'config/config.json')
     )
-    if config['drivers']:
+    if config.get('drivers'):
         subprocess.run(mkdir_cmd(port, 'drivers'))
         subprocess.run(
             put_cmd(

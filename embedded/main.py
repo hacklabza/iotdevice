@@ -31,6 +31,7 @@ def load_config():
 
 
 def reset():
+    set_led_status('error')
     time.sleep(60)
     machine.reset()
 
@@ -143,6 +144,19 @@ def log_status(mqtt, status):
         publish_mqtt_message(mqtt, mqtt_queue, status)
 
     PREVIOUS_STATE = hashlib.sha1(status).digest()
+
+
+def set_led_status(status):
+    status_pin_numbers = CONFIG['health'].get('leds', {})
+    status_pins = {
+        _status: machine.Pin(pin_number, machine.Pin.OUT)
+        for _status, pin_number in status_pin_numbers.items()
+    }
+    for _status, pin in status_pins.items():
+        if status == _status:
+            pin.on()
+        else:
+            pin.off()
 
 
 def health_check(mqtt):
@@ -267,6 +281,9 @@ def run(mqtt, pin_config):
     while True:
 
         health_check(mqtt)
+
+        # Set the status led
+        set_led_status('ok')
 
         for pin in pin_config:
             rule = pin['rule']

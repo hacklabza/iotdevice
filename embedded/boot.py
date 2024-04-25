@@ -38,13 +38,6 @@ def connect_wifi(wifi_config):
                         essid=essid, ip_address=ip_address
                     )
                 )
-
-                led_pin = machine.Signal(
-                    machine.Pin(2, machine.Pin.OUT),
-                    invert=True
-                )
-                led_pin.on()
-
                 break
 
     return wifi.isconnected()

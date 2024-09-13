@@ -118,7 +118,7 @@ screen /dev/tty.usbserial-02031CC9 115200
     {
       "pin_number": null,
       "name": "Day Timer",
-      "identifier": "day_timer",
+      "identifier": "day-timer",
       "analog": false,
       "read": true,
       "rule": {
@@ -132,7 +132,7 @@ screen /dev/tty.usbserial-02031CC9 115200
     {
       "pin_number": 5,
       "name": "Soil Moisture Sensor",
-      "identifier": "soil_moisture_sensor",
+      "identifier": "soil-moisture-sensor",
       "analog": false,
       "read": true,
       "rule": {
@@ -146,7 +146,7 @@ screen /dev/tty.usbserial-02031CC9 115200
     {
       "pin_number": null,
       "name": "Weather Service Forecast",
-      "identifier": "weather_service_forecast",
+      "identifier": "weather-service-forecast",
       "analog": false,
       "read": true,
       "rule": {
@@ -160,7 +160,7 @@ screen /dev/tty.usbserial-02031CC9 115200
     {
       "pin_number": null,
       "name": "Weather Service Current",
-      "identifier": "weather_service_current",
+      "identifier": "weather-service-current",
       "analog": false,
       "read": true,
       "rule": {
@@ -174,7 +174,7 @@ screen /dev/tty.usbserial-02031CC9 115200
     {
       "pin_number": null,
       "name": "MQTT Toggle",
-      "identifier": "mqtt_toggle",
+      "identifier": "mqtt-toggle",
       "analog": false,
       "read": true,
       "rule": {
@@ -196,7 +196,7 @@ screen /dev/tty.usbserial-02031CC9 115200
           "on": {
             "conditions": {
               "must": {
-                "soil_moisture_sensor": {
+                "soil-moisture-sensor": {
                   "operator": "eq",
                   "value": true
                 },
@@ -204,25 +204,25 @@ screen /dev/tty.usbserial-02031CC9 115200
                   "operator": "eq",
                   "value": true
                 },
-                "weather_service_forecast.0.rain": {
+                "weather-service-forecast.0.rain": {
                   "operator": "eq",
                   "value": false
                 },
-                 "weather_service_forecast.1.rain": {
+                 "weather-service-forecast.1.rain": {
                   "operator": "eq",
                   "value": false
                 },
-                "weather_service_current.temperature": {
+                "weather-service-current.temperature": {
                   "operator": "gt",
                   "value": 10
                 },
-                "weather_service_current.rain": {
+                "weather-service-current.rain": {
                   "operator": "eq",
                   "value": false
                 }
               },
               "should": {
-                "mqtt_toggle": {
+                "mqtt-toggle": {
                   "operator": "eq",
                   "value": true
                 }

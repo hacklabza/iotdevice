@@ -202,7 +202,7 @@ def mqtt_toggle(pin, rule, retry_count=0, **kwargs):
         else:
             raise Exception('MQTT Service is offline.')
 
-    return int(MQTT_SUB_MSG.get(topic, 0))
+    return bool(MQTT_SUB_MSG.get(topic, 0))
 
 
 def timer(pin, rule, **kwargs):

@@ -1,17 +1,10 @@
 # This file is executed on every boot (including wake-boot from deepsleep)
-import gc
-import json
 import machine
 import network
 import time
 import webrepl
 
-gc.collect()
-
-
-def load_config():
-    with open('config/config.json', 'r') as config_file:
-        return json.loads(config_file.read())
+import utils
 
 
 def connect_wifi(wifi_config):
@@ -28,7 +21,7 @@ def connect_wifi(wifi_config):
                         count=i + 1, retry_count=wifi_config['retry_count']
                     )
                 )
-                time.sleep(10)
+                time.sleep(5)
                 if i == wifi_config['retry_count'] - 1:
                     print('Connection failed. Rebooting.')
             else:
@@ -42,9 +35,9 @@ def connect_wifi(wifi_config):
 
     return wifi.isconnected()
 
-
-WIFI_CONFIG = load_config()['wifi']
-MAIN_CONFIG = load_config()['main']
+CONFIG = utils.load_config()
+WIFI_CONFIG = CONFIG['wifi']
+MAIN_CONFIG = CONFIG['main']
 
 # Connect to wifi if enabled
 wifi_connected = connect_wifi(WIFI_CONFIG)
@@ -54,8 +47,6 @@ if wifi_connected:
 
     # Setup webrepl
     webrepl.start(password=MAIN_CONFIG['webrepl_password'])
-
-    gc.collect()
 
 else:
     machine.reset()

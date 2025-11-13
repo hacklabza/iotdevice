@@ -1,0 +1,388 @@
+import unittest
+import sys
+import os
+import json
+from unittest.mock import mock_open, patch
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+import utils
+
+
+class TestLoadConfig(unittest.TestCase):
+    """Test cases for load_config function"""
+
+    def test_load_config_success(self):
+        """Test successful config loading"""
+        mock_config = {"key": "value", "number": 42}
+        mock_file_content = json.dumps(mock_config)
+
+        with patch('builtins.open', mock_open(read_data=mock_file_content)):
+            result = utils.load_config()
+            self.assertEqual(result, mock_config)
+
+    def test_load_config_empty_json(self):
+        """Test loading empty JSON object"""
+        mock_file_content = "{}"
+
+        with patch('builtins.open', mock_open(read_data=mock_file_content)):
+            result = utils.load_config()
+            self.assertEqual(result, {})
+
+    def test_load_config_complex_structure(self):
+        """Test loading complex nested JSON"""
+        mock_config = {
+            "sensors": {
+                "temperature": {"pin": 4, "enabled": True},
+                "pressure": {"pin": 5, "enabled": False}
+            },
+            "thresholds": [10, 20, 30]
+        }
+        mock_file_content = json.dumps(mock_config)
+
+        with patch('builtins.open', mock_open(read_data=mock_file_content)):
+            result = utils.load_config()
+            self.assertEqual(result, mock_config)
+
+
+class TestFindXpathValue(unittest.TestCase):
+    """Test cases for find_xpath_value function"""
+
+    def test_find_simple_key(self):
+        """Test finding a simple key in dict"""
+        response = {"key": "value"}
+        xpaths = ["key"]
+        result = utils.find_xpath_value(response, xpaths)
+        self.assertEqual(result, "value")
+
+    def test_find_nested_keys(self):
+        """Test finding nested keys"""
+        response = {"level1": {"level2": {"level3": "deep_value"}}}
+        xpaths = ["level3", "level2", "level1"]  # reversed
+        result = utils.find_xpath_value(response, xpaths)
+        self.assertEqual(result, "deep_value")
+
+    def test_find_array_index(self):
+        """Test finding value by array index"""
+        response = {"items": [10, 20, 30]}
+        xpaths = ["1", "items"]  # reversed
+        result = utils.find_xpath_value(response, xpaths)
+        self.assertEqual(result, 20)
+
+    def test_find_mixed_dict_and_array(self):
+        """Test finding value with mixed dict and array paths"""
+        response = {
+            "sensors": [
+                {"name": "temp", "value": 25},
+                {"name": "pressure", "value": 1013}
+            ]
+        }
+        xpaths = ["value", "0", "sensors"]  # reversed
+        result = utils.find_xpath_value(response, xpaths)
+        self.assertEqual(result, 25)
+
+    def test_find_nonexistent_key(self):
+        """Test finding non-existent key returns None"""
+        response = {"key": "value"}
+        xpaths = ["nonexistent"]
+        result = utils.find_xpath_value(response, xpaths)
+        self.assertIsNone(result)
+
+    def test_find_invalid_index(self):
+        """Test finding with invalid array index returns None"""
+        response = {"items": [1, 2, 3]}
+        xpaths = ["10", "items"]  # index out of range
+        result = utils.find_xpath_value(response, xpaths)
+        self.assertIsNone(result)
+
+    def test_find_key_in_list(self):
+        """Test trying to find key in list returns None"""
+        response = [1, 2, 3]
+        xpaths = ["key"]
+        result = utils.find_xpath_value(response, xpaths)
+        self.assertIsNone(result)
+
+    def test_find_single_element_xpath(self):
+        """Test with single element xpath"""
+        response = {"key": "value"}
+        xpaths = ["key"]
+        result = utils.find_xpath_value(response, xpaths)
+        self.assertEqual(result, "value")
+
+    def test_find_index_in_dict(self):
+        """Test trying to use numeric index on dict returns None"""
+        response = {"key": "value"}
+        xpaths = ["0"]
+        result = utils.find_xpath_value(response, xpaths)
+        self.assertIsNone(result)
+
+    def test_find_nested_array_access(self):
+        """Test nested array access"""
+        response = {"data": [[1, 2], [3, 4], [5, 6]]}
+        xpaths = ["1", "2", "data"]  # reversed: data[2][1]
+        result = utils.find_xpath_value(response, xpaths)
+        self.assertEqual(result, 6)
+
+    def test_find_with_none_value(self):
+        """Test finding path where value is None"""
+        response = {"key": None}
+        xpaths = ["key"]
+        result = utils.find_xpath_value(response, xpaths)
+        self.assertIsNone(result)
+
+
+class TestEvaluateCondition(unittest.TestCase):
+    """Test cases for evaluate_condition function"""
+
+    def test_evaluate_eq_true(self):
+        """Test equality operator when true"""
+        result = utils.evaluate_condition(10, 'eq', 10)
+        self.assertTrue(result)
+
+    def test_evaluate_eq_false(self):
+        """Test equality operator when false"""
+        result = utils.evaluate_condition(10, 'eq', 20)
+        self.assertFalse(result)
+
+    def test_evaluate_gt_true(self):
+        """Test greater than operator when true"""
+        result = utils.evaluate_condition(20, 'gt', 10)
+        self.assertTrue(result)
+
+    def test_evaluate_gt_false(self):
+        """Test greater than operator when false"""
+        result = utils.evaluate_condition(10, 'gt', 20)
+        self.assertFalse(result)
+
+    def test_evaluate_gt_equal(self):
+        """Test greater than operator when equal"""
+        result = utils.evaluate_condition(10, 'gt', 10)
+        self.assertFalse(result)
+
+    def test_evaluate_lt_true(self):
+        """Test less than operator when true"""
+        result = utils.evaluate_condition(10, 'lt', 20)
+        self.assertTrue(result)
+
+    def test_evaluate_lt_false(self):
+        """Test less than operator when false"""
+        result = utils.evaluate_condition(20, 'lt', 10)
+        self.assertFalse(result)
+
+    def test_evaluate_lt_equal(self):
+        """Test less than operator when equal"""
+        result = utils.evaluate_condition(10, 'lt', 10)
+        self.assertFalse(result)
+
+    def test_evaluate_string_equality(self):
+        """Test equality with strings"""
+        result = utils.evaluate_condition("test", 'eq', "test")
+        self.assertTrue(result)
+
+    def test_evaluate_string_inequality(self):
+        """Test inequality with strings"""
+        result = utils.evaluate_condition("test", 'eq', "other")
+        self.assertFalse(result)
+
+    def test_evaluate_float_comparison(self):
+        """Test comparison with floats"""
+        result = utils.evaluate_condition(25.5, 'gt', 25.0)
+        self.assertTrue(result)
+
+    def test_evaluate_type_error(self):
+        """Test type error returns False"""
+        result = utils.evaluate_condition("string", 'gt', 10)
+        self.assertFalse(result)
+
+    def test_evaluate_none_comparison(self):
+        """Test comparison with None"""
+        result = utils.evaluate_condition(None, 'eq', None)
+        self.assertTrue(result)
+
+    def test_evaluate_none_vs_value(self):
+        """Test None compared to value"""
+        result = utils.evaluate_condition(None, 'eq', 10)
+        self.assertFalse(result)
+
+    def test_evaluate_unknown_operator(self):
+        """Test unknown operator returns None (no match in if/elif)"""
+        result = utils.evaluate_condition(10, 'unknown', 10)
+        self.assertIsNone(result)
+
+
+class TestHandleConditions(unittest.TestCase):
+    """Test cases for handle_conditions function"""
+
+    def test_handle_must_conditions_all_true(self):
+        """Test must conditions when all are true"""
+        rule_values = {"sensor1": 25, "sensor2": 30}
+        input_value = {
+            "conditions": {
+                "must": {
+                    "sensor1": {"operator": "gt", "value": 20},
+                    "sensor2": {"operator": "gt", "value": 25}
+                }
+            }
+        }
+        result = utils.handle_conditions(rule_values, input_value)
+        self.assertEqual(result["must"], [True, True])
+        self.assertEqual(result["should"], [])
+
+    def test_handle_must_conditions_some_false(self):
+        """Test must conditions when some are false"""
+        rule_values = {"sensor1": 15, "sensor2": 30}
+        input_value = {
+            "conditions": {
+                "must": {
+                    "sensor1": {"operator": "gt", "value": 20},
+                    "sensor2": {"operator": "gt", "value": 25}
+                }
+            }
+        }
+        result = utils.handle_conditions(rule_values, input_value)
+        self.assertEqual(result["must"], [False, True])
+
+    def test_handle_should_conditions(self):
+        """Test should conditions"""
+        rule_values = {"sensor1": 25, "sensor2": 15}
+        input_value = {
+            "conditions": {
+                "should": {
+                    "sensor1": {"operator": "gt", "value": 20},
+                    "sensor2": {"operator": "gt", "value": 20}
+                }
+            }
+        }
+        result = utils.handle_conditions(rule_values, input_value)
+        self.assertEqual(result["must"], [])
+        self.assertEqual(result["should"], [True, False])
+
+    def test_handle_mixed_conditions(self):
+        """Test mixed must and should conditions"""
+        rule_values = {"temp": 25, "pressure": 1013, "humidity": 60}
+        input_value = {
+            "conditions": {
+                "must": {
+                    "temp": {"operator": "gt", "value": 20}
+                },
+                "should": {
+                    "pressure": {"operator": "gt", "value": 1000},
+                    "humidity": {"operator": "lt", "value": 70}
+                }
+            }
+        }
+        result = utils.handle_conditions(rule_values, input_value)
+        self.assertEqual(result["must"], [True])
+        self.assertEqual(result["should"], [True, True])
+
+    def test_handle_nested_xpath_conditions(self):
+        """Test conditions with nested xpath"""
+        rule_values = {
+            "sensors": {
+                "temperature": 25,
+                "pressure": 1013
+            }
+        }
+        input_value = {
+            "conditions": {
+                "must": {
+                    "sensors.temperature": {"operator": "eq", "value": 25},
+                    "sensors.pressure": {"operator": "gt", "value": 1000}
+                }
+            }
+        }
+        result = utils.handle_conditions(rule_values, input_value)
+        self.assertEqual(result["must"], [True, True])
+
+    def test_handle_array_xpath_conditions(self):
+        """Test conditions with array xpath"""
+        rule_values = {
+            "readings": [10, 20, 30, 40]
+        }
+        input_value = {
+            "conditions": {
+                "must": {
+                    "readings.0": {"operator": "eq", "value": 10},
+                    "readings.2": {"operator": "gt", "value": 25}
+                }
+            }
+        }
+        result = utils.handle_conditions(rule_values, input_value)
+        self.assertEqual(result["must"], [True, True])
+
+    def test_handle_nonexistent_xpath(self):
+        """Test conditions with non-existent xpath"""
+        rule_values = {"sensor1": 25}
+        input_value = {
+            "conditions": {
+                "must": {
+                    "nonexistent": {"operator": "eq", "value": 25}
+                }
+            }
+        }
+        result = utils.handle_conditions(rule_values, input_value)
+        self.assertEqual(result["must"], [False])
+
+    def test_handle_empty_conditions(self):
+        """Test with empty conditions dict"""
+        rule_values = {"sensor1": 25}
+        input_value = {
+            "conditions": {}
+        }
+        result = utils.handle_conditions(rule_values, input_value)
+        self.assertEqual(result["must"], [])
+        self.assertEqual(result["should"], [])
+
+    def test_handle_unknown_condition_type(self):
+        """Test with unknown condition type (should be ignored)"""
+        rule_values = {"sensor1": 25}
+        input_value = {
+            "conditions": {
+                "unknown_type": {
+                    "sensor1": {"operator": "eq", "value": 25}
+                }
+            }
+        }
+        result = utils.handle_conditions(rule_values, input_value)
+        self.assertEqual(result["must"], [])
+        self.assertEqual(result["should"], [])
+
+    def test_handle_equality_condition(self):
+        """Test equality conditions"""
+        rule_values = {"status": "active", "count": 5}
+        input_value = {
+            "conditions": {
+                "must": {
+                    "status": {"operator": "eq", "value": "active"},
+                    "count": {"operator": "eq", "value": 5}
+                }
+            }
+        }
+        result = utils.handle_conditions(rule_values, input_value)
+        self.assertEqual(result["must"], [True, True])
+
+    def test_handle_deep_nested_xpath(self):
+        """Test deeply nested xpath conditions"""
+        rule_values = {
+            "device": {
+                "sensors": {
+                    "environmental": {
+                        "temperature": 25
+                    }
+                }
+            }
+        }
+        input_value = {
+            "conditions": {
+                "must": {
+                    "device.sensors.environmental.temperature": {"operator": "gt", "value": 20}
+                }
+            }
+        }
+        result = utils.handle_conditions(rule_values, input_value)
+        self.assertEqual(result["must"], [True])
+
+
+if __name__ == '__main__':
+    unittest.main()

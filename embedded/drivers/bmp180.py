@@ -117,6 +117,9 @@ class BMP180(object):
             yield True
 
     def blocking_read(self):
+        """
+        Blocks until new data is available.
+        """
         if next(self.gauge) is not None:
             pass  # Discard old data
         while next(self.gauge) is None:
@@ -124,10 +127,16 @@ class BMP180(object):
 
     @property
     def oversample(self):
+        """
+        Gets the oversample setting.
+        """
         return self.oversample_setting
 
     @oversample.setter
     def oversample(self, value):
+        """
+        Sets the oversample setting.
+        """
         if value in range(4):
             self.oversample_setting = value
         else:

@@ -478,49 +478,69 @@ class TestMqttToggle(unittest.TestCase):
         """Reset global MQTT_SUB_MSG before each test"""
         rules.MQTT_SUB_MSG = {}
 
-    def test_mqtt_toggle_success(self):
+    @patch('rules.utils.value_to_bool')
+    def test_mqtt_toggle_success(self, mock_value_to_bool):
         """Test successful MQTT toggle"""
         mock_pin = Mock()
+        mock_pin.value.return_value = 1
         mock_mqtt = Mock()
         rules.MQTT_SUB_MSG['iot-devices/1/toggle'] = '1'
+        mock_value_to_bool.return_value = True
 
         result = rules.mqtt_toggle(mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle')
 
         mock_mqtt.set_callback.assert_called_once()
         mock_mqtt.subscribe.assert_called_once_with('iot-devices/1/toggle')
         mock_mqtt.check_msg.assert_called_once()
+        mock_value_to_bool.assert_called_once_with('1')
+        mock_pin.on.assert_called_once()
         self.assertTrue(result)
 
-    def test_mqtt_toggle_false(self):
+    @patch('rules.utils.value_to_bool')
+    def test_mqtt_toggle_false(self, mock_value_to_bool):
         """Test MQTT toggle returning false"""
         mock_pin = Mock()
+        mock_pin.value.return_value = 0
         mock_mqtt = Mock()
-        rules.MQTT_SUB_MSG['iot-devices/1/toggle'] = ''  # Empty string evaluates to False
+        rules.MQTT_SUB_MSG['iot-devices/1/toggle'] = '0'
+        mock_value_to_bool.return_value = False
 
         result = rules.mqtt_toggle(mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle')
 
+        mock_value_to_bool.assert_called_once_with('0')
+        mock_pin.off.assert_called_once()
         self.assertFalse(result)
 
-    def test_mqtt_toggle_missing_topic(self):
+    @patch('rules.utils.value_to_bool')
+    def test_mqtt_toggle_missing_topic(self, mock_value_to_bool):
         """Test MQTT toggle with missing topic"""
         mock_pin = Mock()
+        mock_pin.value.return_value = 0
         mock_mqtt = Mock()
+        mock_value_to_bool.return_value = False
 
         result = rules.mqtt_toggle(mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle')
 
+        # Default value '0' is passed to value_to_bool when topic is missing
+        mock_value_to_bool.assert_called_once_with('0')
+        mock_pin.off.assert_called_once()
         self.assertFalse(result)
 
-    def test_mqtt_toggle_retry_on_exception(self):
+    @patch('rules.utils.value_to_bool')
+    def test_mqtt_toggle_retry_on_exception(self, mock_value_to_bool):
         """Test MQTT toggle retries on exception"""
         mock_pin = Mock()
+        mock_pin.value.return_value = 1
         mock_mqtt = Mock()
         mock_mqtt.check_msg.side_effect = [Exception('error'), None]
         rules.MQTT_SUB_MSG['iot-devices/1/toggle'] = '1'
+        mock_value_to_bool.return_value = True
 
         result = rules.mqtt_toggle(mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle')
 
         # Should connect once for retry
         mock_mqtt.connect.assert_called_once()
+        mock_pin.on.assert_called_once()
         self.assertTrue(result)
 
     def test_mqtt_toggle_max_retries_exceeded(self):
@@ -533,7 +553,8 @@ class TestMqttToggle(unittest.TestCase):
             rules.mqtt_toggle(mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle')
 
         self.assertEqual(str(context.exception), 'MQTT Service is offline.')
-        # Should try to connect 4 times for retries (retry_count: 1, 2, 3, 4)
+
+        # Should try to connect 4 times for retries
         self.assertEqual(mock_mqtt.connect.call_count, 4)
 
 

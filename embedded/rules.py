@@ -2,6 +2,8 @@ import json
 import socket
 import time
 
+import utils
+
 
 MQTT_SUB_MSG = {}
 
@@ -202,7 +204,9 @@ def mqtt_toggle(pin, rule, retry_count=0, **kwargs):
         else:
             raise Exception('MQTT Service is offline.')
 
-    return bool(MQTT_SUB_MSG.get(topic, 0))
+    value = utils.value_to_bool(MQTT_SUB_MSG.get(topic, '0'))
+    toggle(pin, rule, on=value)
+    return value
 
 
 def timer(pin, rule, **kwargs):

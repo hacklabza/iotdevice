@@ -384,5 +384,81 @@ class TestHandleConditions(unittest.TestCase):
         self.assertEqual(result["must"], [True])
 
 
+class TestValueToBool(unittest.TestCase):
+    """Test cases for value_to_bool function"""
+
+    def test_value_to_bool_true_string(self):
+        """Test 'true' string returns True"""
+        self.assertTrue(utils.value_to_bool('true'))
+
+    def test_value_to_bool_true_uppercase(self):
+        """Test 'True' string returns True"""
+        self.assertTrue(utils.value_to_bool('True'))
+
+    def test_value_to_bool_true_mixed_case(self):
+        """Test 'TrUe' string returns True"""
+        self.assertTrue(utils.value_to_bool('TrUe'))
+
+    def test_value_to_bool_one_string(self):
+        """Test '1' string returns True"""
+        self.assertTrue(utils.value_to_bool('1'))
+
+    def test_value_to_bool_yes_string(self):
+        """Test 'yes' string returns True"""
+        self.assertTrue(utils.value_to_bool('yes'))
+
+    def test_value_to_bool_on_string(self):
+        """Test 'on' string returns True"""
+        self.assertTrue(utils.value_to_bool('on'))
+
+    def test_value_to_bool_false_string(self):
+        """Test 'false' string returns False"""
+        self.assertFalse(utils.value_to_bool('false'))
+
+    def test_value_to_bool_zero_string(self):
+        """Test '0' string returns False"""
+        self.assertFalse(utils.value_to_bool('0'))
+
+    def test_value_to_bool_off_string(self):
+        """Test 'off' string returns False"""
+        self.assertFalse(utils.value_to_bool('off'))
+
+    def test_value_to_bool_empty_string(self):
+        """Test empty string returns False"""
+        self.assertFalse(utils.value_to_bool(''))
+
+    def test_value_to_bool_random_string(self):
+        """Test random string returns False"""
+        self.assertFalse(utils.value_to_bool('random'))
+
+    def test_value_to_bool_bool_true(self):
+        """Test boolean True returns True"""
+        self.assertTrue(utils.value_to_bool(True))
+
+    def test_value_to_bool_bool_false(self):
+        """Test boolean False returns False"""
+        self.assertFalse(utils.value_to_bool(False))
+
+    def test_value_to_bool_none(self):
+        """Test None returns False"""
+        self.assertFalse(utils.value_to_bool(None))
+
+    def test_value_to_bool_int_zero(self):
+        """Test integer 0 returns False"""
+        self.assertFalse(utils.value_to_bool(0))
+
+    def test_value_to_bool_int_one(self):
+        """Test integer 1 returns True"""
+        self.assertTrue(utils.value_to_bool(1))
+
+    def test_value_to_bool_int_positive(self):
+        """Test positive integer returns True"""
+        self.assertTrue(utils.value_to_bool(42))
+
+    def test_value_to_bool_int_negative(self):
+        """Test negative integer returns True"""
+        self.assertTrue(utils.value_to_bool(-1))
+
+
 if __name__ == '__main__':
     unittest.main()

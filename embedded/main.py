@@ -1,7 +1,6 @@
 import gc
 import hashlib
 import json
-from logging import config
 import ntptime
 import machine
 import sys
@@ -314,7 +313,7 @@ class Device:
 
                     # Run the rule with the appropriate params and save the result
                     # to rule values
-                    self.rule[pin['identifier']] = action(
+                    self.rule_values[pin['identifier']] = action(
                         self.pins[pin['identifier']], rule, **rule_params
                     )
 

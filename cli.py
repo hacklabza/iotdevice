@@ -48,7 +48,7 @@ def flash(chip, port, bin_file):
         chip,
         '--port',
         port,
-        'erase_flash'
+        'erase-flash'
     ])
 
     # Flash the chip
@@ -61,7 +61,7 @@ def flash(chip, port, bin_file):
         port,
         '--baud',
         '460800',
-        'write_flash',
+        'write-flash',
         '-z',
         '0x1000',
         bin_file,
@@ -167,6 +167,8 @@ def install(port, init_config, config_file):
                 )
             )
 
+    subprocess.run(put_cmd(port, 'embedded/__init__.py'))
+    subprocess.run(put_cmd(port, 'embedded/utils.py'))
     subprocess.run(put_cmd(port, 'embedded/rules.py'))
     subprocess.run(put_cmd(port, 'embedded/boot.py'))
     subprocess.run(put_cmd(port, 'embedded/main.py'))

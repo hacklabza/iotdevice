@@ -63,3 +63,13 @@ def handle_conditions(rule_values, input_value):
                 )
 
     return condition_values
+
+
+def value_to_bool(value):
+    """
+    Converts a string, int, or None to a boolean.
+    """
+    if isinstance(value, str):
+        value = value.strip().lower()
+        return value in ['true', '1', 'yes', 'on']
+    return bool(value)

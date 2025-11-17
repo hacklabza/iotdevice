@@ -67,16 +67,24 @@ class Device:
 
     @property
     def previous_state(self):
+        """
+        Get the hashed previous state of the device pins.
+        """
         return self._previous_state
 
     @previous_state.setter
     def previous_state(self, state):
+        """
+        Set the hashed previous state of the device pins."""
         if isinstance(state, bytes):
             self._previous_state = hashlib.sha1(state).digest()
         else:
             self._previous_state = hashlib.sha1(state.encode()).digest()
 
     def _set_led_status(self, status):
+        """
+        Set the status LED based on the current device health.
+        """
         for _status, pin in self.status_pins.items():
             if status == _status:
                 pin.on()
@@ -84,11 +92,18 @@ class Device:
                 pin.off()
 
     def _reset(self):
+        """
+        Reset the device after setting the led status to error.
+        """
         self._set_led_status('error')
         time.sleep(60)
         machine.reset()
 
     def _init_mqtt(self, mqtt_config):
+        """
+        Initialize the MQTT client with the given configuration and set the last
+        will message if provided.
+        """
         try:
             from umqtt.simple import MQTTClient
         except ImportError:
@@ -115,7 +130,13 @@ class Device:
             'Initilised MQTT Client at {host}'.format(host=mqtt_config['host'])
         )
 
+        return self.mqtt
+
     def _publish_mqtt_message(self, mqtt_queue, message, retry_count=0):
+        """
+        Publish a message to the specified MQTT queue and retry a limited number
+        of times if necessary.
+        """
         if retry_count > 0:
             self.mqtt.connect()
         try:
@@ -128,6 +149,10 @@ class Device:
                 raise Exception('MQTT Service is offline.')
 
     def _subscribe_mqtt_message(self, mqtt_queue, callback, retry_count=0):
+        """
+        Subscribe to a MQTT queue and set the callback for incoming messages.
+        Retries a limited number of times if necessary.
+        """
         if retry_count > 0:
             self.mqtt.connect()
         try:
@@ -142,6 +167,9 @@ class Device:
                 raise Exception('MQTT Service is offline.')
 
     def log_message(self, message, level):
+        """
+        Log a message to the MQTT logging queue based on the configured log level.
+        """
         if not self.mqtt:
             print(message)
             return
@@ -156,18 +184,34 @@ class Device:
             print(message)
 
     def _log_info(self, message):
+        """
+        Log an info level message.
+        """
         self.log_message(message, INFO)
 
     def _log_debug(self, message):
+        """
+        Log a debug level message.
+        """
         self.log_message(message, DEBUG)
 
     def _log_warning(self, message):
+        """
+        Log a warning level message.
+        """
         self.log_message(message, WARNING)
 
     def _log_error(self, message):
+        """
+        Log an error level message.
+        """
         self.log_message(message, ERROR)
 
     def _log_status(self, status):
+        """
+        Log the current device status to the MQTT status queue if it has
+        changed.
+        """
         mqtt_queue = 'iot-devices/{identifier}/status/'.format(
             identifier=self.device_id
         )
@@ -178,6 +222,9 @@ class Device:
         self.previous_state = status
 
     def _set_time(self):
+        """
+        Set the local time using the configured NTP server.
+        """
         ntptime.host = self.time_config['server']
         try:
             ntptime.settime()
@@ -216,8 +263,8 @@ class Device:
         pins = {}
         for pin in self.pin_config:
 
-            # Ignore pin configs which don't have assigned pins, these are pin-less
-            # rules
+            # Ignore pin configs which don't have assigned pins, these are pin-
+            # less rules
             if pin['pin_number']:
 
                 # Setup the initial pin as in or out based on the config
@@ -226,7 +273,6 @@ class Device:
                         machine.Pin(pin['pin_number']),
                         atten=machine.ADC.ATTN_11DB
                     )
-
                 else:
                     if pin['read']:
                         pins[pin['identifier']] = machine.Pin(
@@ -252,23 +298,29 @@ class Device:
         return pins
 
     def health_check(self):
+        """
+        Perform health checks on the device's critical services.
+        """
 
         # Check Wifi connection
-        rules.get_service_response(
+        utils.get_service_response(
             url=self.health_config['url'].format(identifier=self.device_id)
         )
 
         # Check MQTT connection
         self.mqtt.ping()
 
-
     def run(self):
-
+        """
+        Main device loop. Continuously processes rules based on the configured
+        pins and their intervals and sleeps for the configured process interval.
+        """
         self._log_debug('Device started.')
 
         run_count = 0
         while True:
 
+            # Perform health checks on each iteration
             self.health_check()
 
             # Set the status led
@@ -300,6 +352,8 @@ class Device:
                     else:
                         rule_params[input_key] = input_value
 
+                # Check if the rule should be run or skipped based on the
+                # configured pin interval
                 if run_count % pin.get('interval', 1) == 0:
                     self._log_debug(
                         'Running rule: {action} with input: {input}.'.format(
@@ -307,9 +361,12 @@ class Device:
                         )
                     )
 
-                    # Add mqtt and server config to rule params by default
-                    rule_params['mqtt'] = self.mqtt
+                    # Add server config to rule params by default
                     rule_params['config'] = self.config
+
+                    # Add mqtt client to rule params if required
+                    if 'mqtt' in rule['action']:
+                        rule_params['mqtt'] = self.mqtt
 
                     # Run the rule with the appropriate params and save the result
                     # to rule values
@@ -329,9 +386,10 @@ class Device:
                             action=rule['action'], input=str(rule_params)
                         )
                     )
-
+            # Log the current device status
             self._log_status(json.dumps(self.rule_values))
 
+            # Sleep for the configured process interval in seconds
             time.sleep(self.main_config['process_interval'])
 
             # Check if the config has been updated, reboot if it has
@@ -346,7 +404,9 @@ class Device:
 
 
 def handle_fatal_error(error_msg, device=None):
-    """Handle fatal errors and reset the device."""
+    """
+    Handle fatal errors and reset the device.
+    """
     if device:
         device.log_message(error_msg, ERROR)
     else:

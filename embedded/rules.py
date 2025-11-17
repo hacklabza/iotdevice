@@ -14,48 +14,10 @@ def get_mqtt_msg(topic, msg):
         MQTT_SUB_MSG[str(topic.decode('utf-8'))] = str(msg.decode('utf-8'))
 
 
-def get_service_response(url, auth_header=None):
-    response_body = ''
-
-    _, _, host, path = url.split('/', 3)
-    port = 80
-    if ':' in host:
-        host, port = host.split(':', 1)
-
-    address = socket.getaddrinfo(host, int(port))[0][-1]
-    if auth_header:
-        request = 'GET /{path} HTTP/1.0\r\nHost: {host}\r\n{auth_header}\r\n\r\n'.format(
-            path=path,
-            host=host,
-            auth_header=auth_header
-        )
-    else:
-        request = 'GET /{path} HTTP/1.0\r\nHost: {host}\r\n\r\n'.format(
-            path=path,
-            host=host
-        )
-
-    _socket = socket.socket()
-    _socket.settimeout(15.0)
-    _socket.connect(address)
-    _socket.send(bytes(request, 'utf8'))
-
-    while True:
-        data = _socket.recv(100)
-        if data:
-            response_body += str(data, 'utf8')
-        else:
-            break
-    _socket.close()
-
-    response_lines = response_body.split()
-    if response_lines[1] in ['200', '201', '301']:
-        return json.loads(response_lines[-1])
-
-    return None
-
-
 def read(pin, rule, **kwargs):
+    """
+    Reads the value of a pin, with optional reversal.
+    """
     reverse = kwargs.get('reverse', False)
     if reverse:
         return not pin.value()
@@ -63,10 +25,16 @@ def read(pin, rule, **kwargs):
 
 
 def read_bool(pin, rule, **kwargs):
+    """
+    Reads the boolean value of a pin.
+    """
     return bool(read(pin, rule, **kwargs))
 
 
 def read_avg_sample(pin, rule, **kwargs):
+    """
+    Reads the average value from multiple samples of a pin.
+    """
     readings = []
     for _ in range(kwargs.get('sample_size', 5)):
         readings.append(read(pin, rule, **kwargs))
@@ -75,6 +43,9 @@ def read_avg_sample(pin, rule, **kwargs):
 
 
 def read_min_sample(pin, rule, **kwargs):
+    """
+    Reads the minimum value from multiple samples of a pin.
+    """
     readings = []
     for _ in range(kwargs.get('sample_size', 5)):
         readings.append(read(pin, rule, **kwargs))
@@ -83,6 +54,9 @@ def read_min_sample(pin, rule, **kwargs):
 
 
 def read_max_sample(pin, rule, **kwargs):
+    """
+    Reads the maximum value from multiple samples of a pin.
+    """
     readings = []
     for _ in range(kwargs.get('sample_size', 5)):
         readings.append(read(pin, rule, **kwargs))
@@ -91,6 +65,9 @@ def read_max_sample(pin, rule, **kwargs):
 
 
 def read_bool_sample(pin, rule, **kwargs):
+    """
+    Reads the boolean value from multiple samples of a pin.
+    """
     readings = []
     for _ in range(kwargs.get('sample_size', 5)):
         readings.append(read(pin, rule, **kwargs))
@@ -99,20 +76,32 @@ def read_bool_sample(pin, rule, **kwargs):
 
 
 def read_analog(pin, rule, **kwargs):
+    """
+    Reads the analog value of a pin.
+    """
     return pin.read()
 
 
 def read_analog_bool(pin, rule, **kwargs):
+    """
+    Reads the boolean value of an analog pin based on a threshold.
+    """
     threshold = kwargs.get('threshold', 4096)
     return read_analog(pin, rule, **kwargs) > threshold
 
 
 def read_analog_percentage(pin, rule, **kwargs):
+    """
+    Reads the analog value of a pin as a percentage based on a threshold.
+    """
     threshold = kwargs.get('threshold', 4096)
     return (read_analog(pin, rule, **kwargs) / threshold) * 100
 
 
 def read_analog_avg_sample(pin, rule, **kwargs):
+    """
+    Reads the average analog value from multiple samples of a pin.
+    """
     readings = []
     for _ in range(kwargs.get('sample_size', 5)):
         readings.append(read_analog(pin, rule, **kwargs))
@@ -121,6 +110,9 @@ def read_analog_avg_sample(pin, rule, **kwargs):
 
 
 def read_analog_min_sample(pin, rule, **kwargs):
+    """
+    Reads the minimum analog value from multiple samples of a pin.
+    """
     readings = []
     for _ in range(kwargs.get('sample_size', 5)):
         readings.append(read_analog(pin, rule, **kwargs))
@@ -129,6 +121,9 @@ def read_analog_min_sample(pin, rule, **kwargs):
 
 
 def read_analog_max_sample(pin, rule, **kwargs):
+    """
+    Reads the maximum analog value from multiple samples of a pin.
+    """
     readings = []
     for _ in range(kwargs.get('sample_size', 5)):
         readings.append(read_analog(pin, rule, **kwargs))
@@ -137,6 +132,9 @@ def read_analog_max_sample(pin, rule, **kwargs):
 
 
 def read_analog_bool_sample(pin, rule, **kwargs):
+    """
+    Reads the boolean value from multiple samples of an analog pin.
+    """
     readings = []
     for _ in range(kwargs.get('sample_size', 5)):
         readings.append(read_analog_bool(pin, rule, **kwargs))
@@ -144,7 +142,22 @@ def read_analog_bool_sample(pin, rule, **kwargs):
     return all(readings)
 
 
+def read_analog_percentage_sample(pin, rule, **kwargs):
+    """
+    Reads the average analog percentage value from multiple samples of an analog
+    pin.
+    """
+    readings = []
+    for _ in range(kwargs.get('sample_size', 5)):
+        readings.append(read_analog_percentage(pin, rule, **kwargs))
+        time.sleep(0.5)
+    return int(sum(readings) / len(readings))
+
+
 def read_dht(pin, rule, **kwargs):
+    """
+    Reads temperature and humidity from a DHT sensor.
+    """
     import dht
 
     _type = kwargs.get('sensor_type')
@@ -164,6 +177,9 @@ def read_dht(pin, rule, **kwargs):
 
 
 def read_bmp180(pin, rule, **kwargs):
+    """
+    Reads temperature, pressure, and altitude from a BMP180 sensor.
+    """
     from drivers.bmp180 import BMP180
 
     oversample = kwargs.get('oversample', 2)
@@ -182,12 +198,18 @@ def read_bmp180(pin, rule, **kwargs):
 
 
 def toggle(pin, rule, **kwargs):
+    """
+    Toggles the state of a pin based on the 'on' keyword argument.
+    """
     on = kwargs.get('on')
     pin.on() if on else pin.off()
     return pin.value()
 
 
 def mqtt_toggle(pin, rule, retry_count=0, **kwargs):
+    """
+    Toggles the state of a pin based on MQTT messages.
+    """
     mqtt = kwargs.get('mqtt')
     topic = kwargs.get('topic')
 
@@ -210,6 +232,9 @@ def mqtt_toggle(pin, rule, retry_count=0, **kwargs):
 
 
 def timer(pin, rule, **kwargs):
+    """
+    Checks if the current time is within a specified GMT start and end time range.
+    """
     start_time = kwargs.get('gmt_start_time').replace(':', '')
     end_time = kwargs.get('gmt_end_time').replace(':', '')
 
@@ -222,7 +247,10 @@ def timer(pin, rule, **kwargs):
 
 
 def service(pin, rule, **kwargs):
+    """
+    Calls a web service and returns its response.
+    """
     url = kwargs.get('url')
     auth_header = kwargs.get('auth_header')
 
-    return get_service_response(url, auth_header)
+    return utils.get_service_response(url, auth_header)

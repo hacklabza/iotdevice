@@ -505,7 +505,7 @@ class TestPinCreation(unittest.TestCase):
 class TestHealthCheck(unittest.TestCase):
     """Test cases for health check functionality"""
 
-    @patch('main.rules.get_service_response')
+    @patch('main.utils.get_service_response')
     def test_health_check_calls_service_and_mqtt_ping(self, mock_get_service):
         """Test health check calls both service endpoint and MQTT ping"""
         mock_get_service.return_value = {"status": "ok"}

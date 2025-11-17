@@ -1,13 +1,13 @@
 import unittest
 import sys
 import os
-import json
 from unittest.mock import Mock, MagicMock, patch, call
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import rules
+import utils
 
 
 class TestGetMqttMsg(unittest.TestCase):
@@ -52,94 +52,6 @@ class TestGetMqttMsg(unittest.TestCase):
         rules.get_mqtt_msg(b'iot-devices/1/toggle', b'30')
 
         self.assertEqual(rules.MQTT_SUB_MSG['iot-devices/1/toggle'], '30')
-
-class TestGetServiceResponse(unittest.TestCase):
-    """Test cases for get_service_response function"""
-
-    @patch('rules.socket.socket')
-    @patch('rules.socket.getaddrinfo')
-    def test_get_service_response_success(self, mock_getaddrinfo, mock_socket):
-        """Test successful service response"""
-        # Setup mocks
-        mock_getaddrinfo.return_value = [(None, None, None, None, ('192.168.1.1', 80))]
-        mock_sock = Mock()
-        mock_socket.return_value = mock_sock
-
-        # Response body with proper line breaks (split() will separate by whitespace)
-        response_body = 'HTTP/1.1\n200\nOK\nContent-Type:\napplication/json\n\n{"result":"success"}'
-        mock_sock.recv.side_effect = [
-            bytes(response_body, 'utf8'),
-            b''
-        ]
-
-        result = rules.get_service_response('http://example.com/api/data')
-
-        self.assertEqual(result, {"result": "success"})
-        mock_sock.connect.assert_called_once_with(('192.168.1.1', 80))
-        mock_sock.settimeout.assert_called_once_with(15.0)
-
-    @patch('rules.socket.socket')
-    @patch('rules.socket.getaddrinfo')
-    def test_get_service_response_with_auth(self, mock_getaddrinfo, mock_socket):
-        """Test service response with auth header"""
-        mock_getaddrinfo.return_value = [(None, None, None, None, ('192.168.1.1', 80))]
-        mock_sock = Mock()
-        mock_socket.return_value = mock_sock
-
-        response_body = 'HTTP/1.1\n200\nOK\n\n{"data":"value"}'
-        mock_sock.recv.side_effect = [bytes(response_body, 'utf8'), b'']
-
-        result = rules.get_service_response('http://example.com/api', 'Authorization: Bearer token')
-
-        self.assertEqual(result, {"data": "value"})
-        # Verify auth header was included in request
-        sent_request = mock_sock.send.call_args[0][0].decode('utf8')
-        self.assertIn('Authorization: Bearer token', sent_request)
-
-    @patch('rules.socket.socket')
-    @patch('rules.socket.getaddrinfo')
-    def test_get_service_response_with_port(self, mock_getaddrinfo, mock_socket):
-        """Test service response with custom port"""
-        mock_getaddrinfo.return_value = [(None, None, None, None, ('192.168.1.1', 8080))]
-        mock_sock = Mock()
-        mock_socket.return_value = mock_sock
-
-        response_body = 'HTTP/1.1\n200\nOK\n\n{"status":"ok"}'
-        mock_sock.recv.side_effect = [bytes(response_body, 'utf8'), b'']
-
-        result = rules.get_service_response('http://example.com:8080/api')
-
-        self.assertEqual(result, {"status": "ok"})
-
-    @patch('rules.socket.socket')
-    @patch('rules.socket.getaddrinfo')
-    def test_get_service_response_201_status(self, mock_getaddrinfo, mock_socket):
-        """Test service response with 201 status"""
-        mock_getaddrinfo.return_value = [(None, None, None, None, ('192.168.1.1', 80))]
-        mock_sock = Mock()
-        mock_socket.return_value = mock_sock
-
-        response_body = 'HTTP/1.1\n201\nCreated\n\n{"id":123}'
-        mock_sock.recv.side_effect = [bytes(response_body, 'utf8'), b'']
-
-        result = rules.get_service_response('http://example.com/api')
-
-        self.assertEqual(result, {"id": 123})
-
-    @patch('rules.socket.socket')
-    @patch('rules.socket.getaddrinfo')
-    def test_get_service_response_404_status(self, mock_getaddrinfo, mock_socket):
-        """Test service response with 404 status returns None"""
-        mock_getaddrinfo.return_value = [(None, None, None, None, ('192.168.1.1', 80))]
-        mock_sock = Mock()
-        mock_socket.return_value = mock_sock
-
-        response_body = 'HTTP/1.1\n404\nNotFound\n\n{"error":"not found"}'
-        mock_sock.recv.side_effect = [bytes(response_body, 'utf8'), b'']
-
-        result = rules.get_service_response('http://example.com/api')
-
-        self.assertIsNone(result)
 
 
 class TestReadFunctions(unittest.TestCase):
@@ -642,7 +554,7 @@ class TestTimer(unittest.TestCase):
 class TestService(unittest.TestCase):
     """Test cases for service function"""
 
-    @patch('rules.get_service_response')
+    @patch('utils.get_service_response')
     def test_service_without_auth(self, mock_get_response):
         """Test service call without auth header"""
         mock_pin = Mock()
@@ -653,7 +565,7 @@ class TestService(unittest.TestCase):
         mock_get_response.assert_called_once_with('http://example.com/api', None)
         self.assertEqual(result, {"status": "success"})
 
-    @patch('rules.get_service_response')
+    @patch('utils.get_service_response')
     def test_service_with_auth(self, mock_get_response):
         """Test service call with auth header"""
         mock_pin = Mock()
@@ -672,7 +584,7 @@ class TestService(unittest.TestCase):
         )
         self.assertEqual(result, {"data": "value"})
 
-    @patch('embedded.rules.get_service_response')
+    @patch('utils.get_service_response')
     def test_service_returns_none(self, mock_get_response):
         """Test service call returning None"""
         mock_pin = Mock()

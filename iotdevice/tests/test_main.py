@@ -125,6 +125,7 @@ def create_mock_device(config=None):
     with patch('main.utils.load_config', return_value=config), \
          patch('main.machine') as mock_machine, \
          patch('main.ntptime') as mock_ntptime, \
+         patch('main.sys.platform', 'esp8266'), \
          patch('builtins.print'):
 
         # Set up machine mock attributes
@@ -172,6 +173,110 @@ class TestDeviceInitialization(unittest.TestCase):
 
         expected_hash = hashlib.sha1(test_state).digest()
         self.assertEqual(device.previous_state, expected_hash)
+
+
+class TestMqttInitialization(unittest.TestCase):
+    """Test cases for MQTT initialization with last will"""
+
+    def test_mqtt_init_with_lastwill(self):
+        """Test MQTT initialization sets last will when configured"""
+        config = EXAMPLE_CONFIG.copy()
+        config['mqtt']['lastwill'] = {
+            'topic': 'iot-devices/{identifier}/status',
+            'message': 'Device offline'
+        }
+
+        with patch('main.utils.load_config', return_value=config), \
+             patch('main.machine') as mock_machine, \
+             patch('main.ntptime'), \
+             patch('builtins.print'):
+
+            mock_machine.Pin.IN = 0
+            mock_machine.Pin.OUT = 1
+            mock_machine.ADC.ATTN_11DB = 3
+
+            mock_mqtt_client = Mock()
+            with patch.dict('sys.modules', {'umqtt.simple': Mock(MQTTClient=Mock(return_value=mock_mqtt_client))}):
+                device = main.Device()
+
+                # Verify set_last_will was called with the correct formatted topic and message
+                mock_mqtt_client.set_last_will.assert_called_once_with(
+                    topic='iot-devices/b6d49b8d-c31f-4809-a955-a814de6ab3f3/status',
+                    msg='Device offline'
+                )
+                mock_mqtt_client.connect.assert_called()
+
+    def test_mqtt_init_without_lastwill(self):
+        """Test MQTT initialization skips last will when not configured"""
+        config = EXAMPLE_CONFIG.copy()
+        config['mqtt'].pop('lastwill', None)  # Remove lastwill config
+
+        with patch('main.utils.load_config', return_value=config), \
+             patch('main.machine') as mock_machine, \
+             patch('main.ntptime'), \
+             patch('builtins.print'):
+
+            mock_machine.Pin.IN = 0
+            mock_machine.Pin.OUT = 1
+            mock_machine.ADC.ATTN_11DB = 3
+
+            mock_mqtt_client = Mock()
+            with patch.dict('sys.modules', {'umqtt.simple': Mock(MQTTClient=Mock(return_value=mock_mqtt_client))}):
+                device = main.Device()
+
+                # Verify set_last_will was NOT called
+                mock_mqtt_client.set_last_will.assert_not_called()
+                mock_mqtt_client.connect.assert_called()
+
+    def test_mqtt_init_with_lastwill_none(self):
+        """Test MQTT initialization skips last will when explicitly set to None"""
+        config = EXAMPLE_CONFIG.copy()
+        config['mqtt']['lastwill'] = None
+
+        with patch('main.utils.load_config', return_value=config), \
+             patch('main.machine') as mock_machine, \
+             patch('main.ntptime'), \
+             patch('builtins.print'):
+
+            mock_machine.Pin.IN = 0
+            mock_machine.Pin.OUT = 1
+            mock_machine.ADC.ATTN_11DB = 3
+
+            mock_mqtt_client = Mock()
+            with patch.dict('sys.modules', {'umqtt.simple': Mock(MQTTClient=Mock(return_value=mock_mqtt_client))}):
+                device = main.Device()
+
+                # Verify set_last_will was NOT called
+                mock_mqtt_client.set_last_will.assert_not_called()
+                mock_mqtt_client.connect.assert_called()
+
+    def test_mqtt_init_import_error_installs_package(self):
+        """Test MQTT initialization installs package on ImportError"""
+        config = EXAMPLE_CONFIG.copy()
+
+        with patch('main.utils.load_config', return_value=config), \
+             patch('main.machine') as mock_machine, \
+             patch('main.ntptime'), \
+             patch('main.mip') as mock_mip, \
+             patch('builtins.print'):
+
+            mock_machine.Pin.IN = 0
+            mock_machine.Pin.OUT = 1
+            mock_machine.ADC.ATTN_11DB = 3
+
+            # Simulate ImportError on first import
+            mock_mqtt_client = Mock()
+            umqtt_module = Mock(MQTTClient=Mock(return_value=mock_mqtt_client))
+
+            with patch.dict('sys.modules', {'umqtt.simple': None}):
+                # First import fails, then succeeds after install
+                with patch('builtins.__import__', side_effect=[ImportError, umqtt_module]):
+                    with patch.dict('sys.modules', {'umqtt': Mock(), 'umqtt.simple': umqtt_module}):
+                        device = main.Device()
+
+                        # Verify mip.install was called
+                        mock_mip.install.assert_called_with('micropython-umqtt.simple')
+                        mock_mqtt_client.connect.assert_called()
 
 
 class TestDeviceLedStatus(unittest.TestCase):
@@ -314,6 +419,9 @@ class TestLogging(unittest.TestCase):
         """Test _log_warning wrapper method"""
         device, mock_mqtt, _ = create_mock_device()
 
+        # Reset call count after device initialization
+        mock_mqtt.publish.reset_mock()
+
         device._log_warning('Warning message')
 
         # WARNING matches configured level, should publish
@@ -323,18 +431,56 @@ class TestLogging(unittest.TestCase):
         """Test _log_error wrapper method"""
         device, mock_mqtt, _ = create_mock_device()
 
-        device._log_error('Error message')
+        # Reset call count after device initialization
+        mock_mqtt.publish.reset_mock()
 
-        # ERROR is above WARNING, should publish
+        device._log_error('Warning message')
+
+        # WARNING matches configured level, should publish
         mock_mqtt.publish.assert_called_once()
+
+    @patch('builtins.print')
+    def test_log_message_without_mqtt(self, mock_print):
+        """Test log_message prints to console when mqtt is None"""
+        device, _, _ = create_mock_device()
+        device.mqtt = None
+
+        device.log_message('Test message', main.INFO)
+
+        mock_print.assert_called_with('Test message')
+
+    @patch('builtins.print')
+    def test_log_message_prints_in_debug_mode(self, mock_print):
+        """Test log_message prints to console when level is DEBUG"""
+        config = EXAMPLE_CONFIG.copy()
+        config['logging']['level'] = 'debug'
+        device, _, _ = create_mock_device(config)
+
+        device.log_message('Debug message', main.DEBUG)
+
+        mock_print.assert_called()
+
+    @patch('builtins.print')
+    def test_log_message_prints_in_info_mode(self, mock_print):
+        """Test log_message prints to console when level is INFO"""
+        config = EXAMPLE_CONFIG.copy()
+        config['logging']['level'] = 'info'
+        device, _, _ = create_mock_device(config)
+
+        device.log_message('Info message', main.INFO)
+
+        mock_print.assert_called()
 
 
 class TestStatusLogging(unittest.TestCase):
     """Test cases for status logging"""
 
     def test_log_status_first_time_is_published(self):
-        """Test first status log is always published"""
+        """Test first status is published"""
         device, mock_mqtt, _ = create_mock_device()
+
+        # Reset call count after device initialization
+        mock_mqtt.publish.reset_mock()
 
         device._log_status('{"state": "active"}')
 
@@ -418,6 +564,33 @@ class TestTimeSettings(unittest.TestCase):
                 # Should have retried
                 self.assertEqual(mock_ntptime.settime.call_count, 2)
                 mock_sleep.assert_called_once_with(2)
+
+    @patch('main.time.localtime')
+    @patch('main.time.sleep')
+    def test_set_time_exception_resets_device(self, mock_sleep, mock_localtime):
+        """Test time setting resets device on repeated failure"""
+        mock_localtime.return_value = (2025, 11, 13, 14, 30, 0, 0, 0)
+
+        with patch('main.utils.load_config', return_value=EXAMPLE_CONFIG), \
+             patch('main.machine') as mock_machine, \
+             patch('main.ntptime') as mock_ntptime:
+
+            mock_machine.Pin.IN = 0
+            mock_machine.Pin.OUT = 1
+            mock_machine.ADC.ATTN_11DB = 3
+
+            # First call raises OSError, second call raises generic Exception
+            mock_ntptime.settime.side_effect = [OSError('Network error'), Exception('Fatal error')]
+
+            # Mock MQTT client
+            mock_mqtt_client = Mock()
+            with patch.dict('sys.modules', {'umqtt.simple': Mock(MQTTClient=Mock(return_value=mock_mqtt_client))}):
+                with patch.object(main.Device, '_reset') as mock_reset:
+                    with patch.object(main.Device, '_log_warning'):
+                        device = main.Device()
+
+                        # Should have called reset after logging warning
+                        mock_reset.assert_called_once()
 
 
 class TestMemoryManagement(unittest.TestCase):
@@ -503,6 +676,49 @@ class TestPinCreation(unittest.TestCase):
         # solenoid-relay is digital output (read=False, analog=False)
         self.assertIsNotNone(device.pins['solenoid-relay'])
 
+    def test_create_pins_analog_input(self):
+        """Test analog pin is created with ADC"""
+        import copy
+        config = copy.deepcopy(EXAMPLE_CONFIG)
+        config['pins'].append({
+            "pin_number": 36,
+            "name": "Analog Sensor",
+            "identifier": "analog-sensor",
+            "analog": True,
+            "read": True,
+            "i2c": False,
+            "interval": 1,
+            "rule": {"action": "read_analog", "input": {}}
+        })
+
+        device, _, mock_machine = create_mock_device(config)
+
+        # Should have created an ADC pin
+        self.assertIn('analog-sensor', device.pins)
+        mock_machine.ADC.assert_called()
+
+    def test_create_pins_i2c_interface(self):
+        """Test I2C interface pin is created"""
+        import copy
+        config = copy.deepcopy(EXAMPLE_CONFIG)
+        config['pins'].append({
+            "pin_number": None,
+            "name": "I2C Sensor",
+            "identifier": "i2c-sensor",
+            "analog": False,
+            "read": True,
+            "i2c": True,
+            "interval": 1,
+            "rule": {"action": "read_bmp180", "input": {}}
+        })
+
+        with patch('main.sys.platform', 'esp8266'):
+            device, _, mock_machine = create_mock_device(config)
+
+            # Should have created a SoftI2C interface
+            self.assertIn('i2c-sensor', device.pins)
+            mock_machine.SoftI2C.assert_called()
+
 
 class TestHealthCheck(unittest.TestCase):
     """Test cases for health check functionality"""
@@ -548,6 +764,93 @@ class TestHandleFatalError(unittest.TestCase):
         # Should log error via MQTT
         mock_mqtt.publish.assert_called()
         mock_sleep.assert_called_once_with(10)
+        mock_reset.assert_called_once()
+
+
+class TestRunLoop(unittest.TestCase):
+    """Tests for the main run() loop"""
+
+    def test_run_single_iteration_updates_rule_values(self):
+        """run() executes one iteration and updates rule_values for all pins"""
+        # Arrange device
+        device, _, _ = create_mock_device()
+
+        # Patch rule actions to deterministic values
+        with patch('main.rules.timer', return_value=True) as mock_timer, \
+             patch('main.rules.read_bool_sample', return_value=False) as mock_read_bool_sample, \
+             patch('main.rules.toggle', return_value='on') as mock_toggle, \
+             patch.object(device, 'health_check'), \
+             patch.object(device, '_set_led_status'), \
+             patch('main.utils.load_config', return_value=EXAMPLE_CONFIG), \
+             patch('main.time.sleep', side_effect=StopIteration):
+
+            # Act: break the infinite loop by raising StopIteration on sleep
+            with self.assertRaises(StopIteration):
+                device.run()
+
+        # Assert rule values were set from actions
+        self.assertIn('day-timer', device.rule_values)
+        self.assertIn('soil-moisture-sensor', device.rule_values)
+        self.assertIn('solenoid-relay', device.rule_values)
+        self.assertTrue(device.rule_values['day-timer'])
+        self.assertFalse(device.rule_values['soil-moisture-sensor'])
+        self.assertEqual(device.rule_values['solenoid-relay'], 'on')
+
+        # Ensure actions were called once in the single iteration
+        mock_timer.assert_called_once()
+        mock_read_bool_sample.assert_called_once()
+        mock_toggle.assert_called_once()
+
+    def test_run_skips_rules_based_on_interval(self):
+        """run() performs skip branch for pins with higher interval on second iteration"""
+        import copy
+        config = copy.deepcopy(EXAMPLE_CONFIG)
+        # Set day-timer to run every 2 iterations so it will be skipped on the second
+        config['pins'][0]['interval'] = 2
+
+        # Create device with modified config
+        device, _, _ = create_mock_device(config)
+
+        with patch('main.rules.timer', return_value=True) as mock_timer, \
+             patch('main.rules.read_bool_sample', return_value=True) as mock_read_bool_sample, \
+             patch('main.rules.toggle', return_value=True) as mock_toggle, \
+             patch.object(device, 'health_check'), \
+             patch.object(device, '_set_led_status'), \
+             patch.object(device, '_cleanup_memory'), \
+             patch('main.utils.load_config', return_value=config), \
+             patch('main.time.sleep', side_effect=[None, StopIteration]):
+
+            # Two iterations: first completes, second raises to exit
+            with self.assertRaises(StopIteration):
+                device.run()
+
+        # day-timer (interval=2) should have run only once, others twice
+        self.assertEqual(mock_timer.call_count, 1)
+        self.assertEqual(mock_read_bool_sample.call_count, 2)
+        self.assertEqual(mock_toggle.call_count, 2)
+
+    def test_run_triggers_reset_on_config_change(self):
+        """run() calls _reset when config changes between iterations"""
+        import copy
+        base = copy.deepcopy(EXAMPLE_CONFIG)
+        changed = copy.deepcopy(EXAMPLE_CONFIG)
+        changed['main']['process_interval'] = 30  # any change to make dict differ
+
+        device, _, _ = create_mock_device(base)
+
+        with patch('main.rules.timer', return_value=True), \
+             patch('main.rules.read_bool_sample', return_value=True), \
+             patch('main.rules.toggle', return_value=True), \
+             patch.object(device, 'health_check'), \
+             patch.object(device, '_set_led_status'), \
+             patch.object(device, '_cleanup_memory'), \
+             patch.object(device, '_reset') as mock_reset, \
+             patch('main.utils.load_config', side_effect=[changed, changed]), \
+             patch('main.time.sleep', side_effect=[None, StopIteration]):
+
+            with self.assertRaises(StopIteration):
+                device.run()
+
         mock_reset.assert_called_once()
 
 

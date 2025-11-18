@@ -88,7 +88,7 @@ def install(port, init_config, config_file):
     """
 
     if init_config:
-        with open('embedded/config/config.example.json', 'r') as _file:
+        with open('iotdevice/config/config.example.json', 'r') as _file:
             config = json.loads(_file.read())
 
         if config_file:
@@ -140,21 +140,21 @@ def install(port, init_config, config_file):
             if drivers:
                 config['drivers'] = [d.strip() for d in drivers.split(',')]
 
-        with open('embedded/config/config.json', 'w') as _file:
+        with open('iotdevice/config/config.json', 'w') as _file:
             _file.write(json.dumps(config, indent=4))
 
     # Write the firmware to the device
     click.echo(f'Writing firmware to `{port}`')
     subprocess.run(mkdir_cmd(port, 'config'))
     subprocess.run(
-        put_cmd(port, 'embedded/config/config.json', 'config/config.json')
+        put_cmd(port, 'iotdevice/config/config.json', 'config/config.json')
     )
     if config.get('drivers'):
         subprocess.run(mkdir_cmd(port, 'drivers'))
         subprocess.run(
             put_cmd(
                 port,
-                'embedded/drivers/__init__.py',
+                'iotdevice/drivers/__init__.py',
                 'drivers/__init__.py'
             )
         )
@@ -162,16 +162,16 @@ def install(port, init_config, config_file):
             subprocess.run(
                 put_cmd(
                     port,
-                    f'embedded/drivers/{driver_name}.py',
+                    f'iotdevice/drivers/{driver_name}.py',
                     f'drivers/{driver_name}.py'
                 )
             )
 
-    subprocess.run(put_cmd(port, 'embedded/__init__.py'))
-    subprocess.run(put_cmd(port, 'embedded/utils.py'))
-    subprocess.run(put_cmd(port, 'embedded/rules.py'))
-    subprocess.run(put_cmd(port, 'embedded/boot.py'))
-    subprocess.run(put_cmd(port, 'embedded/main.py'))
+    subprocess.run(put_cmd(port, 'iotdevice/__init__.py'))
+    subprocess.run(put_cmd(port, 'iotdevice/utils.py'))
+    subprocess.run(put_cmd(port, 'iotdevice/rules.py'))
+    subprocess.run(put_cmd(port, 'iotdevice/boot.py'))
+    subprocess.run(put_cmd(port, 'iotdevice/main.py'))
 
 
 if __name__ == '__main__':

@@ -2,6 +2,8 @@
 
 Generic Micropython based IoT Device (ESP8266/ESP32) - Configurable via https://github.com/hacklabza/iotserver
 
+[![codecov](https://codecov.io/gh/hacklabza/iotdevice/graph/badge.svg?token=ULQPR8HJO8)](https://codecov.io/gh/hacklabza/iotdevice)
+
 ## ESP8266/ESP32 Node
 
 ### Requirements

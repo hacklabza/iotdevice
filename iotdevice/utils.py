@@ -1,5 +1,7 @@
 import json
+import network
 import socket
+import time
 
 
 def load_config():
@@ -7,6 +9,35 @@ def load_config():
     Loads the configuration file from the filesystem."""
     with open('config/config.json', 'r') as config_file:
         return json.loads(config_file.read())
+
+
+def connect_wifi(wifi_config):
+    wifi = network.WLAN(network.STA_IF)
+    if not wifi.isconnected():
+        print('Connecting to wifi...')
+        wifi.active(True)
+        essid = wifi_config['essid']
+        wifi.connect(essid, wifi_config['password'])
+        for i in range(wifi_config['retry_count']):
+            if not wifi.isconnected():
+                print(
+                    'Connection attempt {count}/{retry_count}'.format(
+                        count=i + 1, retry_count=wifi_config['retry_count']
+                    )
+                )
+                time.sleep(5)
+                if i == wifi_config['retry_count'] - 1:
+                    print('Connection failed. Rebooting.')
+            else:
+                ip_address = wifi.ifconfig()[0]
+                print(
+                    'Connected to {essid} with IP: {ip_address}'.format(
+                        essid=essid, ip_address=ip_address
+                    )
+                )
+                break
+
+    return wifi.isconnected()
 
 
 def find_xpath_value(response, xpaths):

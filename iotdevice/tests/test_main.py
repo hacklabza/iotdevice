@@ -12,6 +12,8 @@ sys.modules['ntptime'] = Mock()
 sys.modules['machine'] = Mock()
 sys.modules['mip'] = Mock()
 sys.modules['gc'] = Mock()
+sys.modules['network'] = Mock()
+sys.modules['time'] = Mock()
 
 import main
 

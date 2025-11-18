@@ -6,6 +6,10 @@ from unittest.mock import Mock, MagicMock, patch, call
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# Mock MicroPython modules before importing
+sys.modules['network'] = MagicMock()
+sys.modules['time'] = MagicMock()
+
 import rules
 import utils
 
@@ -265,6 +269,44 @@ class TestReadAnalogFunctions(unittest.TestCase):
         result = rules.read_analog_bool_sample(mock_pin, {}, threshold=4096, sample_size=5)
 
         self.assertFalse(result)
+
+    @patch('rules.time.sleep')
+    def test_read_analog_percentage_sample(self, mock_sleep):
+        """Test read_analog_percentage_sample calculates average percentage"""
+        mock_pin = Mock()
+        # Values: 2048, 4096, 3072, 1024, 2560
+        # Percentages at threshold 4096: 50%, 100%, 75%, 25%, 62.5%
+        # Average: 62.5%
+        mock_pin.read.side_effect = [2048, 4096, 3072, 1024, 2560]
+
+        result = rules.read_analog_percentage_sample(mock_pin, {}, threshold=4096, sample_size=5)
+
+        self.assertEqual(result, 62)  # int((50 + 100 + 75 + 25 + 62.5) / 5) = 62
+        self.assertEqual(mock_sleep.call_count, 5)
+
+    @patch('rules.time.sleep')
+    def test_read_analog_percentage_sample_default_size(self, mock_sleep):
+        """Test read_analog_percentage_sample with default sample size"""
+        mock_pin = Mock()
+        mock_pin.read.side_effect = [4096, 4096, 4096, 4096, 4096]
+
+        result = rules.read_analog_percentage_sample(mock_pin, {}, threshold=4096)
+
+        self.assertEqual(result, 100)
+        self.assertEqual(mock_sleep.call_count, 5)
+
+    @patch('rules.time.sleep')
+    def test_read_analog_percentage_sample_custom_threshold(self, mock_sleep):
+        """Test read_analog_percentage_sample with custom threshold"""
+        mock_pin = Mock()
+        # With threshold 1000: 500, 1000, 750 = 50%, 100%, 75%
+        # Average: 75%
+        mock_pin.read.side_effect = [500, 1000, 750]
+
+        result = rules.read_analog_percentage_sample(mock_pin, {}, threshold=1000, sample_size=3)
+
+        self.assertEqual(result, 75)
+        self.assertEqual(mock_sleep.call_count, 3)
 
 
 class TestReadDHT(unittest.TestCase):

@@ -2,10 +2,14 @@ import unittest
 import sys
 import os
 import json
-from unittest.mock import mock_open, patch, Mock
+from unittest.mock import mock_open, patch, Mock, MagicMock
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Mock MicroPython modules
+sys.modules['network'] = MagicMock()
+sys.modules['time'] = MagicMock()
 
 import utils
 
@@ -44,6 +48,129 @@ class TestLoadConfig(unittest.TestCase):
         with patch('builtins.open', mock_open(read_data=mock_file_content)):
             result = utils.load_config()
             self.assertEqual(result, mock_config)
+
+
+class TestConnectWifi(unittest.TestCase):
+    """Test cases for connect_wifi function"""
+
+    @patch('utils.time')
+    @patch('utils.network')
+    def test_connect_wifi_already_connected(self, mock_network, mock_time):
+        """Test when wifi is already connected"""
+        mock_wifi = Mock()
+        mock_wifi.isconnected.return_value = True
+        mock_network.WLAN.return_value = mock_wifi
+
+        wifi_config = {
+            'essid': 'TestNetwork',
+            'password': 'testpass123',
+            'retry_count': 5
+        }
+
+        result = utils.connect_wifi(wifi_config)
+
+        self.assertTrue(result)
+        mock_wifi.active.assert_not_called()
+        mock_wifi.connect.assert_not_called()
+
+    @patch('utils.time')
+    @patch('utils.network')
+    def test_connect_wifi_successful_first_attempt(self, mock_network, mock_time):
+        """Test successful wifi connection on first attempt"""
+        mock_wifi = Mock()
+        # First call returns False (not connected), subsequent calls return True
+        mock_wifi.isconnected.side_effect = [False, True, True]
+        mock_wifi.ifconfig.return_value = ['192.168.1.100', '255.255.255.0', '192.168.1.1', '8.8.8.8']
+        mock_network.WLAN.return_value = mock_wifi
+        mock_network.STA_IF = 'STA_IF'
+
+        wifi_config = {
+            'essid': 'TestNetwork',
+            'password': 'testpass123',
+            'retry_count': 5
+        }
+
+        result = utils.connect_wifi(wifi_config)
+
+        self.assertTrue(result)
+        mock_wifi.active.assert_called_once_with(True)
+        mock_wifi.connect.assert_called_once_with('TestNetwork', 'testpass123')
+        mock_time.sleep.assert_not_called()
+
+    @patch('utils.time')
+    @patch('utils.network')
+    def test_connect_wifi_successful_after_retries(self, mock_network, mock_time):
+        """Test successful wifi connection after multiple retries"""
+        mock_wifi = Mock()
+        # Not connected initially, fails 2 times, then connects
+        mock_wifi.isconnected.side_effect = [False, False, False, True, True]
+        mock_wifi.ifconfig.return_value = ['192.168.1.100', '255.255.255.0', '192.168.1.1', '8.8.8.8']
+        mock_network.WLAN.return_value = mock_wifi
+        mock_network.STA_IF = 'STA_IF'
+
+        wifi_config = {
+            'essid': 'TestNetwork',
+            'password': 'testpass123',
+            'retry_count': 5
+        }
+
+        result = utils.connect_wifi(wifi_config)
+
+        self.assertTrue(result)
+        mock_wifi.active.assert_called_once_with(True)
+        mock_wifi.connect.assert_called_once_with('TestNetwork', 'testpass123')
+        self.assertEqual(mock_time.sleep.call_count, 2)
+
+    @patch('utils.time')
+    @patch('utils.network')
+    def test_connect_wifi_max_retries_reached(self, mock_network, mock_time):
+        """Test wifi connection fails after max retries"""
+        mock_wifi = Mock()
+        # Never connects - always returns False
+        mock_wifi.isconnected.return_value = False
+        mock_network.WLAN.return_value = mock_wifi
+        mock_network.STA_IF = 'STA_IF'
+
+        wifi_config = {
+            'essid': 'TestNetwork',
+            'password': 'testpass123',
+            'retry_count': 3
+        }
+
+        result = utils.connect_wifi(wifi_config)
+
+        self.assertFalse(result)
+        mock_wifi.active.assert_called_once_with(True)
+        mock_wifi.connect.assert_called_once_with('TestNetwork', 'testpass123')
+        self.assertEqual(mock_time.sleep.call_count, 3)
+
+    @patch('utils.time')
+    @patch('utils.network')
+    def test_connect_wifi_prints_connection_attempts(self, mock_network, mock_time):
+        """Test that connection attempts are printed correctly"""
+        mock_wifi = Mock()
+        # Not connected initially, fails once, then connects
+        mock_wifi.isconnected.side_effect = [False, False, True, True]
+        mock_wifi.ifconfig.return_value = ['10.0.0.50', '255.255.255.0', '10.0.0.1', '8.8.8.8']
+        mock_network.WLAN.return_value = mock_wifi
+        mock_network.STA_IF = 'STA_IF'
+
+        wifi_config = {
+            'essid': 'MyWiFi',
+            'password': 'mypassword',
+            'retry_count': 5
+        }
+
+        with patch('builtins.print') as mock_print:
+            result = utils.connect_wifi(wifi_config)
+
+        self.assertTrue(result)
+        # Check that appropriate messages were printed
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        self.assertTrue(any('Connecting to wifi' in str(call) for call in print_calls))
+        self.assertTrue(any('Connection attempt' in str(call) for call in print_calls))
+        self.assertTrue(any('Connected to MyWiFi' in str(call) for call in print_calls))
+        self.assertTrue(any('10.0.0.50' in str(call) for call in print_calls))
 
 
 class TestFindXpathValue(unittest.TestCase):

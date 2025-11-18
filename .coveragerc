@@ -1,0 +1,13 @@
+[run]
+branch = True
+source =
+    iotdevice
+omit =
+    */config/*
+    */drivers/*
+    */tests/*
+    */__init__.py
+    cli.py
+
+[report]
+show_missing = True

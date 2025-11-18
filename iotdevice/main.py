@@ -148,24 +148,6 @@ class Device:
             else:
                 raise Exception('MQTT Service is offline.')
 
-    def _subscribe_mqtt_message(self, mqtt_queue, callback, retry_count=0):
-        """
-        Subscribe to a MQTT queue and set the callback for incoming messages.
-        Retries a limited number of times if necessary.
-        """
-        if retry_count > 0:
-            self.mqtt.connect()
-        try:
-            self.mqtt.set_callback(callback)
-            self.subscribe(mqtt_queue)
-            self.check_msg()
-        except Exception:
-            if retry_count <= 3:
-                retry_count += 1
-                self._subscribe_mqtt_message(mqtt_queue, callback, retry_count)
-            else:
-                raise Exception('MQTT Service is offline.')
-
     def log_message(self, message, level):
         """
         Log a message to the MQTT logging queue based on the configured log level.

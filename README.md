@@ -9,6 +9,7 @@ Generic Micropython based IoT Device (ESP8266/ESP32) - Configurable via https://
 - esptool.py
 - screen (OSX)
 - ampy
+- poetry
 
 ### Installation
 
@@ -18,9 +19,8 @@ Either a manual install or commandline install is available - the cli is recomme
 
 ```bash
 # Install the python deps
-python3 -m venv ve
-. ve/bin/activate
-pip install -r requirements.txt
+poetry install
+poetry shell
 
 # Get help
 ./cli.py --help
@@ -41,7 +41,8 @@ screen /dev/tty.usbserial-02031CC9 115200
 
 ```bash
 # Install the python deps
-pip install -r requirements.txt
+poetry install
+poetry shell
 
 # Flash your board with the latest version of micropython for ESP8266 (https://micropython.org/download/esp8266/)
 esptool.py --chip esp8266 --port /dev/tty.usbserial-01A7B50C erase_flash
@@ -55,27 +56,27 @@ esptool.py --chip esp32 --port /dev/tty.usbserial-02031CC9 --baud 460800 write_f
 screen /dev/tty.usbserial-02031CC9 115200
 
 # Copy the config example and populate it - the wifi network details are essential
-cp embedded/config/config.example.json embedded/config/config.json
-vim embedded/config/config.json
+cp iotdevice/config/config.example.json iotdevice/config/config.json
+vim iotdevice/config/config.json
 
 # Check the file system on your board
 ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 ls
 
 # Copy the config files over to your board
 ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 mkdir config
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/config/config.json config/config.json
+ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/config/config.json config/config.json
 
 # Copy the executable files over to your board in order
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/utils.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/rules.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/boot.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/main.py
+ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/utils.py
+ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/rules.py
+ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/boot.py
+ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/main.py
 
 # Copy across any plugin and their associated drivers (if any) your project requires
 ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 mkdir drivers
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/drivers/__init__.py drivers/__init__.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/drivers/bmp180.py drivers/bmp180.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put embedded/drivers/oled.py drivers/oled.py
+ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/drivers/__init__.py drivers/__init__.py
+ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/drivers/bmp180.py drivers/bmp180.py
+ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/drivers/oled.py drivers/oled.py
 
 # Connect again via screen to get the IP Address of the device
 screen /dev/tty.usbserial-02031CC9 115200
@@ -242,5 +243,5 @@ I.e. The solenoid relay will switch on if the soil moisture returns dry, the tim
 ### Testing
 
 ```bash
-python -m unittest discover -s embedded/tests
+poetry run pytest --cov
 ```

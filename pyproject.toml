@@ -1,0 +1,29 @@
+[project]
+name = "iotdevice"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Jonathan Bydendyk",email = "jonathan@hacklab.co.za"}
+]
+license = {text = "BSD-3-Clause"}
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "adafruit-ampy (>=1.1.0,<2.0.0)",
+    "bitstring (>=4.3.1,<5.0.0)",
+    "click (>=8.3.1,<9.0.0)",
+    "esptool (>=5.1.0,<6.0.0)",
+    "pycparser (>=2.23,<3.0)",
+    "pyserial (>=3.5,<4.0)",
+    "python-dotenv (>=1.2.1,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^9.0.1"
+pytest-cov = "^7.0.0"
+

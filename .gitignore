@@ -23,8 +23,11 @@ ve/
 /static/
 
 # config
-embedded/config/config.json
-embedded/config/config.init
+iotdevice/config/config.json
+iotdevice/config/config.init
+
+# pyenv
+.python-version
 
 # misc
 *.swp

@@ -219,6 +219,19 @@ class TestReadAnalogFunctions(unittest.TestCase):
 
         self.assertEqual(result, 100.0)
 
+    def test_read_analog_percentage_decimal(self):
+        """Test read_analog_percentage with a preset decimal"""
+        mock_pin = Mock()
+        mock_pin.read.return_value = 1630
+
+        result = rules.read_analog_percentage(mock_pin, {}, threshold=4096)
+
+        self.assertEqual(result, 39.8)
+
+        result = rules.read_analog_percentage(mock_pin, {}, threshold=4096, decimal_places=3)
+
+        self.assertEqual(result, 39.795)
+
     @patch('rules.time.sleep')
     def test_read_analog_avg_sample(self, mock_sleep):
         """Test read_analog_avg_sample"""
@@ -281,7 +294,7 @@ class TestReadAnalogFunctions(unittest.TestCase):
 
         result = rules.read_analog_percentage_sample(mock_pin, {}, threshold=4096, sample_size=5)
 
-        self.assertEqual(result, 62)  # int((50 + 100 + 75 + 25 + 62.5) / 5) = 62
+        self.assertEqual(result, 62.5)  # int((50 + 100 + 75 + 25 + 62.5) / 5) = 62
         self.assertEqual(mock_sleep.call_count, 5)
 
     @patch('rules.time.sleep')

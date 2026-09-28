@@ -257,7 +257,7 @@ class TestMqttInitialization(unittest.TestCase):
         with patch('main.utils.load_config', return_value=config), \
              patch('main.machine') as mock_machine, \
              patch('main.ntptime'), \
-             patch('main.mip') as mock_mip, \
+             patch('main.package_manager') as mock_package_manager, \
              patch('builtins.print'):
 
             mock_machine.Pin.IN = 0
@@ -274,8 +274,8 @@ class TestMqttInitialization(unittest.TestCase):
                     with patch.dict('sys.modules', {'umqtt': Mock(), 'umqtt.simple': umqtt_module}):
                         device = main.Device()
 
-                        # Verify mip.install was called
-                        mock_mip.install.assert_called_with('micropython-umqtt.simple')
+                        # Verify package_manager.install was called
+                        mock_package_manager.install.assert_called_with('micropython-umqtt.simple')
                         mock_mqtt_client.connect.assert_called()
 
 

@@ -5,7 +5,10 @@ import ntptime
 import machine
 import sys
 import time
-import mip
+try:
+    import mip as package_manager
+except ImportError:
+    import upip as package_manager
 
 import rules
 import utils
@@ -107,7 +110,7 @@ class Device:
         try:
             from umqtt.simple import MQTTClient
         except ImportError:
-            mip.install('micropython-umqtt.simple')
+            package_manager.install('micropython-umqtt.simple')
             from umqtt.simple import MQTTClient
 
         self.mqtt = MQTTClient(

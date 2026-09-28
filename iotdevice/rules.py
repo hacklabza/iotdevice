@@ -95,7 +95,8 @@ def read_analog_percentage(pin, rule, **kwargs):
     Reads the analog value of a pin as a percentage based on a threshold.
     """
     threshold = kwargs.get('threshold', 4096)
-    return (read_analog(pin, rule, **kwargs) / threshold) * 100
+    decimal_places = kwargs.get('decimal_places', 1)
+    return round((read_analog(pin, rule, **kwargs) / threshold) * 100, decimal_places)
 
 
 def read_analog_avg_sample(pin, rule, **kwargs):
@@ -147,11 +148,12 @@ def read_analog_percentage_sample(pin, rule, **kwargs):
     Reads the average analog percentage value from multiple samples of an analog
     pin.
     """
+    decimal_places = kwargs.get('decimal_places', 1)
     readings = []
     for _ in range(kwargs.get('sample_size', 5)):
         readings.append(read_analog_percentage(pin, rule, **kwargs))
         time.sleep(0.5)
-    return int(sum(readings) / len(readings))
+    return round(sum(readings) / len(readings), decimal_places)
 
 
 def read_dht(pin, rule, **kwargs):

@@ -326,7 +326,7 @@ class Device:
                             rule_values=self.rule_values,
                             input_value=input_value
                         )
-                        rule_params[input_key] = any([
+                        rule_params[input_key] = all([
                             all(condition_values['must']),
                             any(condition_values['should'])
                         ])

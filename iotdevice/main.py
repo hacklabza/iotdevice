@@ -160,9 +160,7 @@ class Device:
             return
 
         if LOG_LEVELS.index(level) >= LOG_LEVELS.index(self.logging_config['level']):
-            mqtt_queue = 'iot-devices/{identifier}/logs'.format(
-                identifier=self.device_id
-            )
+            mqtt_queue = f'iot-devices/{self.device_id}/logs'
             self._publish_mqtt_message(mqtt_queue, message)
 
         if self.logging_config['level'] in [INFO, DEBUG]:
@@ -197,9 +195,7 @@ class Device:
         Log the current device status to the MQTT status queue if it has
         changed.
         """
-        mqtt_queue = 'iot-devices/{identifier}/status/'.format(
-            identifier=self.device_id
-        )
+        mqtt_queue = f'iot-devices/{self.device_id}/status/'
 
         if self.previous_state != hashlib.sha1(status.encode()).digest():
             self._publish_mqtt_message(mqtt_queue, status)
@@ -221,7 +217,8 @@ class Device:
                 self._log_warning('Could not retrieve local time. Retrying.')
                 self._reset()
 
-        self._log_debug('Local time set to {now}'.format(now=time.localtime()))
+        now = time.localtime()
+        self._log_debug(f'Local time set to {now}')
 
     def _cleanup_memory(self):
         """
@@ -317,7 +314,7 @@ class Device:
                 # Get the rule action method
                 action = getattr(rules, rule['action'])
 
-                # Retrieve method parms including return values from previous
+                # Retrieve method params including return values from previous
                 # actions
                 rule_params = {}
                 for input_key, input_value in rule['input'].items():
@@ -329,9 +326,10 @@ class Device:
                             rule_values=self.rule_values,
                             input_value=input_value
                         )
+                        must, should = condition_values['must'], condition_values['should']
                         rule_params[input_key] = all([
-                            all(condition_values['must']),
-                            any(condition_values['should'])
+                            all(must if must else [True]),
+                            any(should if should else [True])
                         ])
 
                     else:
@@ -382,7 +380,8 @@ class Device:
                 self._reset()
 
             # Free up memory periodically
-            if not run_count % self.main_config.get('memory_cleanup_interval', 100):
+            memory_cleanup_interval = self.main_config.get('memory_cleanup_interval', 100)
+            if run_count % memory_cleanup_interval == 0:
                 self._cleanup_memory()
 
             run_count += 1

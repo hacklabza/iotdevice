@@ -8,9 +8,9 @@ Generic Micropython based IoT Device (ESP8266/ESP32) - Configurable via https://
 
 ### Requirements
 
-- esptool.py
+- esptool
 - screen (OSX)
-- ampy
+- mpremote
 - poetry
 
 ### Installation
@@ -47,12 +47,12 @@ poetry install
 poetry shell
 
 # Flash your board with the latest version of micropython for ESP8266 (https://micropython.org/download/esp8266/)
-esptool.py --chip esp8266 --port /dev/tty.usbserial-01A7B50C erase_flash
-esptool.py --port /dev/tty.usbserial-01A7B50C --baud 460800 write_flash --flash_size=detect 0 ~/Downloads/esp8266-20220618-v1.19.1.bin
+esptool --chip esp8266 --port /dev/tty.usbserial-01A7B50C erase_flash
+esptool --port /dev/tty.usbserial-01A7B50C --baud 460800 write_flash --flash_size=detect 0 ~/Downloads/esp8266-20220618-v1.19.1.bin
 
 # OR flash your board with the latest version of micropython for ESP32 (https://micropython.org/download/esp32/)
-esptool.py --chip esp32 --port /dev/tty.usbserial-02031CC9 erase_flash
-esptool.py --chip esp32 --port /dev/tty.usbserial-02031CC9 --baud 460800 write_flash -z 0x1000 ~/Downloads/ESP32_GENERIC-20250911-v1.26.1.bin
+esptool --chip esp32 --port /dev/tty.usbserial-02031CC9 erase_flash
+esptool --chip esp32 --port /dev/tty.usbserial-02031CC9 --baud 460800 write_flash -z 0x1000 ~/Downloads/ESP32_GENERIC-20250911-v1.26.1.bin
 
 # Check that you get a micropython REPL (OSX) - ctrl+a k y to kill session
 screen /dev/tty.usbserial-02031CC9 115200
@@ -62,23 +62,23 @@ cp iotdevice/config/config.example.json iotdevice/config/config.json
 vim iotdevice/config/config.json
 
 # Check the file system on your board
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 ls
+mpremote --port /dev/tty.usbserial-02031CC9 -d 0.5 ls
 
 # Copy the config files over to your board
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 mkdir config
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/config/config.json config/config.json
+mpremote --port /dev/tty.usbserial-02031CC9 -d 0.5 mkdir config
+mpremote --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/config/config.json config/config.json
 
 # Copy the executable files over to your board in order
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/utils.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/rules.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/boot.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/main.py
+mpremote --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/utils.py
+mpremote --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/rules.py
+mpremote --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/boot.py
+mpremote --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/main.py
 
 # Copy across any plugin and their associated drivers (if any) your project requires
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 mkdir drivers
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/drivers/__init__.py drivers/__init__.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/drivers/bmp180.py drivers/bmp180.py
-ampy --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/drivers/oled.py drivers/oled.py
+mpremote --port /dev/tty.usbserial-02031CC9 -d 0.5 mkdir drivers
+mpremote --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/drivers/__init__.py drivers/__init__.py
+mpremote --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/drivers/bmp180.py drivers/bmp180.py
+mpremote --port /dev/tty.usbserial-02031CC9 -d 0.5 put iotdevice/drivers/oled.py drivers/oled.py
 
 # Connect again via screen to get the IP Address of the device
 screen /dev/tty.usbserial-02031CC9 115200

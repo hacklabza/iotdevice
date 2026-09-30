@@ -1,6 +1,5 @@
 # Adapted from https://github.com/micropython/micropython-esp32/blob/esp32/drivers/display/ssd1306.py
 
-
 from micropython import const
 import framebuf
 
@@ -25,7 +24,7 @@ SET_VCOM_DESEL = const(0xdb)
 SET_CHARGE_PUMP = const(0x8d)
 
 
-class Oled(object):
+class Oled:
     def __init__(self, width, height):
         self.width = width
         self.height = height

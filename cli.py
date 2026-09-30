@@ -1,18 +1,26 @@
 #!/usr/bin/env python
 import json
+import logging
 import subprocess
 
 import click
 
 
-def mkdir_cmd(port, dir_path):
-    return ['ampy', '--port', port, '-d', '0.5', 'mkdir', dir_path]
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def put_cmd(port, src_path, dest_path=None):
-    cmd_list = ['ampy', '--port', port, '-d', '0.5', 'put', src_path]
+def mkdir_cmd(dir_path):
+    cmd_list = ['mpremote', 'mkdir', dir_path]
+    logger.info("Executing mkdir command: %s", " ".join(cmd_list))
+    return cmd_list
+
+
+def put_cmd(src_path, dest_path=None):
+    cmd_list = ['mpremote', 'cp', src_path]
     if dest_path:
-        cmd_list.append(dest_path)
+        cmd_list.append(f':{dest_path}')
+    logger.info("Executing put command: %s", " ".join(cmd_list))
     return cmd_list
 
 
@@ -43,7 +51,7 @@ def flash(chip, port, bin_file):
     # Erase the flash
     click.echo('Erasing flash')
     subprocess.run([
-        'esptool.py',
+        'esptool',
         '--chip',
         chip,
         '--port',
@@ -54,7 +62,7 @@ def flash(chip, port, bin_file):
     # Flash the chip
     click.echo(f'\n\nFlashing device with `{bin_file.split("/")[-1]}`')
     subprocess.run([
-        'esptool.py',
+        'esptool',
         '--chip',
         chip,
         '--port',
@@ -69,12 +77,6 @@ def flash(chip, port, bin_file):
 
 
 @cli.command()
-@click.option(
-    '--port',
-    required=True,
-    type=str,
-    help='The usb port the device is connect to'
-)
 @click.option('--init-config', is_flag=True, help='Reinitialise the config file')
 @click.option(
     '--config-file',
@@ -82,7 +84,7 @@ def flash(chip, port, bin_file):
     required=False,
     help='Reinitialise config from a file'
 )
-def install(port, init_config, config_file):
+def install(init_config, config_file):
     """
     Installs the firmware to the chip
     """
@@ -144,34 +146,26 @@ def install(port, init_config, config_file):
             _file.write(json.dumps(config, indent=4))
 
     # Write the firmware to the device
-    click.echo(f'Writing firmware to `{port}`')
-    subprocess.run(mkdir_cmd(port, 'config'))
+    click.echo(f'Writing firmware')
+    subprocess.run(mkdir_cmd('config'))
     subprocess.run(
-        put_cmd(port, 'iotdevice/config/config.json', 'config/config.json')
+        put_cmd('iotdevice/config/config.json', 'config/config.json')
     )
     if config.get('drivers'):
-        subprocess.run(mkdir_cmd(port, 'drivers'))
+        subprocess.run(mkdir_cmd('drivers'))
         subprocess.run(
-            put_cmd(
-                port,
-                'iotdevice/drivers/__init__.py',
-                'drivers/__init__.py'
-            )
+            put_cmd('iotdevice/drivers/__init__.py', 'drivers/__init__.py')
         )
         for driver_name in config['drivers']:
             subprocess.run(
-                put_cmd(
-                    port,
-                    f'iotdevice/drivers/{driver_name}.py',
-                    f'drivers/{driver_name}.py'
-                )
+                put_cmd(f'iotdevice/drivers/{driver_name}.py', f'drivers/{driver_name}.py')
             )
 
-    subprocess.run(put_cmd(port, 'iotdevice/__init__.py'))
-    subprocess.run(put_cmd(port, 'iotdevice/utils.py'))
-    subprocess.run(put_cmd(port, 'iotdevice/rules.py'))
-    subprocess.run(put_cmd(port, 'iotdevice/boot.py'))
-    subprocess.run(put_cmd(port, 'iotdevice/main.py'))
+    subprocess.run(put_cmd('iotdevice/__init__.py', '__init__.py'))
+    subprocess.run(put_cmd('iotdevice/utils.py', 'utils.py'))
+    subprocess.run(put_cmd('iotdevice/rules.py', 'rules.py'))
+    subprocess.run(put_cmd('iotdevice/boot.py', 'boot.py'))
+    subprocess.run(put_cmd('iotdevice/main.py', 'main.py'))
 
 
 if __name__ == '__main__':

@@ -199,6 +199,22 @@ def read_bmp180(pin, rule, **kwargs):
     }
 
 
+def read_sht30(pin, rule, **kwargs):
+    """
+    Reads temperature and humidity from an SHT30 sensor.
+    """
+    from drivers.sht30 import SHT30
+
+    i2c_address = kwargs.get('i2c_address', 0x45)
+
+    sht30_sensor = SHT30(pin, i2c_address=i2c_address)
+
+    return {
+        'temperature': sht30_sensor.temperature(),
+        'humidity': sht30_sensor.humidity(),
+    }
+
+
 def toggle(pin, rule, **kwargs):
     """
     Toggles the state of a pin based on the 'on' keyword argument.

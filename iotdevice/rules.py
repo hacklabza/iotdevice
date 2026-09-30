@@ -206,12 +206,13 @@ def read_sht30(pin, rule, **kwargs):
     from drivers.sht30 import SHT30
 
     i2c_address = kwargs.get('i2c_address', 0x45)
+    decimal_places = kwargs.get('decimal_places', 1)
 
     sht30_sensor = SHT30(pin, i2c_address=i2c_address)
 
     return {
-        'temperature': sht30_sensor.temperature(),
-        'humidity': sht30_sensor.humidity(),
+        'temperature': round(sht30_sensor.temperature(), decimal_places),
+        'humidity': round(sht30_sensor.humidity(), decimal_places),
     }
 
 

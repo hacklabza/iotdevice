@@ -1,6 +1,6 @@
 [project]
 name = "iotdevice"
-version = "0.1.0"
+version = "0.9.0"
 description = ""
 authors = [
     {name = "Jonathan Bydendyk",email = "jonathan@hacklab.co.za"}
@@ -15,15 +15,38 @@ dependencies = [
     "pycparser (>=2.23,<3.0)",
     "pyserial (>=3.5,<4.0)",
     "python-dotenv (>=1.2.1,<2.0.0)",
-    "mpremote (>=1.29.0,<2.0.0)"
+    "mpremote (>=1.29.0,<2.0.0)",
 ]
 
+[dependency-groups]
+dev = [
+    'pytest>=9.0.1,<10.0.0',
+    'pytest-cov>=7.0.0,<8.0.0',
+    'ruff>=0.16.9,<0.17.0',
+    "pre-commit (>=4.6.2,<5.0.0)",
+]
+
+[tool.poetry]
+requires-poetry = '>=2.2.1,<3.0.0'
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "C90", "B", "I"]
+ignore = ["E203", "E501"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 18
+
+[tool.ruff.lint.isort]
+known-first-party = ["iotdevice"]
+
+[tool.ruff.format]
+quote-style = "preserve"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^9.0.1"
-pytest-cov = "^7.0.0"
 

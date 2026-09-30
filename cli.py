@@ -77,27 +77,28 @@ def flash(chip, port, bin_file):
 
 
 @cli.command()
-@click.option('--init-config', is_flag=True, help='Reinitialise the config file')
+@click.option('--init-config-file', is_flag=True, help='Reinitialise the config file')
 @click.option(
     '--config-file',
     type=str,
     required=False,
     help='Reinitialise config from a file'
 )
-def install(init_config, config_file):
+def install(init_config_file, config_file):
     """
     Installs the firmware to the chip
     """
 
-    if init_config:
+    if init_config_file:
         with open('iotdevice/config/config.example.json', 'r') as _file:
             config = json.loads(_file.read())
 
         if config_file:
+            init_config = {}
             with open(config_file, 'r') as _file:
-                init_config = dict(
-                    [item.strip().split(': ') for item in _file.readlines()]
-                )
+                for line in _file.readlines():
+                    key, value = line.strip().split(': ')
+                    init_config[key] = value
 
             config['wifi']['essid'] = init_config['wifi_essid']
             config['wifi']['password'] = init_config['wifi_password']
@@ -146,26 +147,26 @@ def install(init_config, config_file):
             _file.write(json.dumps(config, indent=4))
 
     # Write the firmware to the device
-    click.echo(f'Writing firmware')
-    subprocess.run(mkdir_cmd('config'))
+    click.echo('Writing firmware')
+    subprocess.run(mkdir_cmd('config'), check=True)
     subprocess.run(
-        put_cmd('iotdevice/config/config.json', 'config/config.json')
+        put_cmd('iotdevice/config/config.json', 'config/config.json'), check=True
     )
     if config.get('drivers'):
-        subprocess.run(mkdir_cmd('drivers'))
+        subprocess.run(mkdir_cmd('drivers'), check=True)
         subprocess.run(
-            put_cmd('iotdevice/drivers/__init__.py', 'drivers/__init__.py')
+            put_cmd('iotdevice/drivers/__init__.py', 'drivers/__init__.py'), check=True
         )
         for driver_name in config['drivers']:
             subprocess.run(
-                put_cmd(f'iotdevice/drivers/{driver_name}.py', f'drivers/{driver_name}.py')
+                put_cmd(f'iotdevice/drivers/{driver_name}.py', f'drivers/{driver_name}.py'), check=True
             )
 
-    subprocess.run(put_cmd('iotdevice/__init__.py', '__init__.py'))
-    subprocess.run(put_cmd('iotdevice/utils.py', 'utils.py'))
-    subprocess.run(put_cmd('iotdevice/rules.py', 'rules.py'))
-    subprocess.run(put_cmd('iotdevice/boot.py', 'boot.py'))
-    subprocess.run(put_cmd('iotdevice/main.py', 'main.py'))
+    subprocess.run(put_cmd('iotdevice/__init__.py', '__init__.py'), check=True)
+    subprocess.run(put_cmd('iotdevice/utils.py', 'utils.py'), check=True)
+    subprocess.run(put_cmd('iotdevice/rules.py', 'rules.py'), check=True)
+    subprocess.run(put_cmd('iotdevice/main.py', 'main.py'), check=True)
+    subprocess.run(put_cmd('iotdevice/boot.py', 'boot.py'), check=True)
 
 
 if __name__ == '__main__':

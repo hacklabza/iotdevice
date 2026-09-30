@@ -16,7 +16,7 @@
         }
     },
     "logging": {
-        "level": "warning"
+        "level": "debug"
     },
     "main": {
         "identifier": null,
@@ -26,7 +26,12 @@
     "time": {
         "server": "za.pool.ntp.org"
     },
+    "drivers": [],
     "health": {
+        "leds": {
+            "error": 27,
+            "ok": 25
+        },
         "url": "http://192.168.50.103:8000/health/{identifier}/"
     },
     "pins": []

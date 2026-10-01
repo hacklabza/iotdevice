@@ -49,6 +49,33 @@ known-first-party = ["iotdevice"]
 [tool.ruff.format]
 quote-style = "preserve"
 
+[tool.coverage.run]
+branch = true
+relative_files = true
+source = ["iotdevice"]
+omit = [
+    "*/config/*",
+    "*/drivers/*",
+    "*/tests/*",
+    "*/__init__.py",
+    "iotdevice/boot.py",
+    "cli.py",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["iotdevice/tests"]
+addopts = "--cov=iotdevice --cov-branch"
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"

@@ -5,7 +5,6 @@ import subprocess
 
 import click
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -34,15 +33,17 @@ def cli():
     '--chip',
     required=True,
     type=click.Choice(['esp8266', 'esp32'], case_sensitive=False),
-    help='The chip type you want to flash'
+    help='The chip type you want to flash',
 )
 @click.option(
     '--port',
     required=True,
     type=str,
-    help='The usb port the device is connect to'
+    help='The usb port the device is connect to',
 )
-@click.option('--bin-file', required=True, type=str, help='The path of the bin file')
+@click.option(
+    '--bin-file', required=True, type=str, help='The path of the bin file'
+)
 def flash(chip, port, bin_file):
     """
     Erases the chip's flash and writes it to the chip again.
@@ -50,39 +51,36 @@ def flash(chip, port, bin_file):
 
     # Erase the flash
     click.echo('Erasing flash')
-    subprocess.run([
-        'esptool',
-        '--chip',
-        chip,
-        '--port',
-        port,
-        'erase-flash'
-    ])
+    subprocess.run(['esptool', '--chip', chip, '--port', port, 'erase-flash'])
 
     # Flash the chip
     click.echo(f'\n\nFlashing device with `{bin_file.split("/")[-1]}`')
-    subprocess.run([
-        'esptool',
-        '--chip',
-        chip,
-        '--port',
-        port,
-        '--baud',
-        '460800',
-        'write-flash',
-        '-z',
-        '0x1000',
-        bin_file,
-    ])
+    subprocess.run(
+        [
+            'esptool',
+            '--chip',
+            chip,
+            '--port',
+            port,
+            '--baud',
+            '460800',
+            'write-flash',
+            '-z',
+            '0x1000',
+            bin_file,
+        ]
+    )
 
 
 @cli.command()
-@click.option('--init-config-file', is_flag=True, help='Reinitialise the config file')
+@click.option(
+    '--init-config-file', is_flag=True, help='Reinitialise the config file'
+)
 @click.option(
     '--config-file',
     type=str,
     required=False,
-    help='Reinitialise config from a file'
+    help='Reinitialise config from a file',
 )
 def install(init_config_file, config_file):
     """
@@ -117,15 +115,19 @@ def install(init_config_file, config_file):
                 config['drivers'] = [d.strip() for d in drivers.split(',')]
 
         else:
-            config['wifi']['essid'] = click.prompt('WiFi SSID', type=click.STRING)
+            config['wifi']['essid'] = click.prompt(
+                'WiFi SSID', type=click.STRING
+            )
             config['wifi']['password'] = click.prompt(
                 'WiFi Password',
                 type=click.STRING,
                 hide_input=True,
-                confirmation_prompt=True
+                confirmation_prompt=True,
             )
 
-            config['mqtt']['host'] = click.prompt('MQTT Host', type=click.STRING)
+            config['mqtt']['host'] = click.prompt(
+                'MQTT Host', type=click.STRING
+            )
 
             iot_server_host = click.prompt('Iot Server Host', type=click.STRING)
             config['health']['url'] = (
@@ -136,10 +138,12 @@ def install(init_config_file, config_file):
                 'Web REPL Password',
                 type=click.STRING,
                 hide_input=True,
-                confirmation_prompt=True
+                confirmation_prompt=True,
             )
 
-            drivers = click.prompt('List of drivers to import', type=click.STRING, default='')
+            drivers = click.prompt(
+                'List of drivers to import', type=click.STRING, default=''
+            )
             if drivers:
                 config['drivers'] = [d.strip() for d in drivers.split(',')]
 
@@ -150,16 +154,22 @@ def install(init_config_file, config_file):
     click.echo('Writing firmware')
     subprocess.run(mkdir_cmd('config'), check=True)
     subprocess.run(
-        put_cmd('iotdevice/config/config.json', 'config/config.json'), check=True
+        put_cmd('iotdevice/config/config.json', 'config/config.json'),
+        check=True,
     )
     if config.get('drivers'):
         subprocess.run(mkdir_cmd('drivers'), check=True)
         subprocess.run(
-            put_cmd('iotdevice/drivers/__init__.py', 'drivers/__init__.py'), check=True
+            put_cmd('iotdevice/drivers/__init__.py', 'drivers/__init__.py'),
+            check=True,
         )
         for driver_name in config['drivers']:
             subprocess.run(
-                put_cmd(f'iotdevice/drivers/{driver_name}.py', f'drivers/{driver_name}.py'), check=True
+                put_cmd(
+                    f'iotdevice/drivers/{driver_name}.py',
+                    f'drivers/{driver_name}.py',
+                ),
+                check=True,
             )
 
     subprocess.run(put_cmd('iotdevice/__init__.py', '__init__.py'), check=True)

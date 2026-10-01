@@ -1,7 +1,8 @@
 # Adapted from https://github.com/micropython-IMU/micropython-bmp180
 
-from ustruct import unpack
 import time
+
+from ustruct import unpack
 
 
 class BMP180(object):
@@ -38,11 +39,11 @@ class BMP180(object):
         for attr, address in self.eprom_address_map.items():
             format = '>h' if count > 3 or count < 5 else '>H'
             setattr(
-                self, attr, unpack(
-                    format, self._bmp_i2c.readfrom_mem(
-                        _bmp_addr, address, 2
-                    )
-                )[0]
+                self,
+                attr,
+                unpack(
+                    format, self._bmp_i2c.readfrom_mem(_bmp_addr, address, 2)
+                )[0],
             )
             count += 1
 
@@ -78,7 +79,7 @@ class BMP180(object):
             self._MB,
             self._MC,
             self._MD,
-            self.oversample_setting
+            self.oversample_setting,
         ]
 
     def make_gauge(self):
@@ -93,14 +94,16 @@ class BMP180(object):
             while (time.ticks_ms() - t_start) <= 5:  # 5mS delay
                 yield None
             try:
-                self.UT_raw = self._bmp_i2c.readfrom_mem(self._bmp_addr, 0xF6, 2)
+                self.UT_raw = self._bmp_i2c.readfrom_mem(
+                    self._bmp_addr, 0xF6, 2
+                )
             except Exception:
                 yield None
 
             self._bmp_i2c.writeto_mem(
                 self._bmp_addr,
                 0xF4,
-                bytearray([0x34+(self.oversample_setting << 6)])
+                bytearray([0x34 + (self.oversample_setting << 6)]),
             )
             t_pressure_ready = delays[self.oversample_setting]
             t_start = time.ticks_ms()
@@ -108,9 +111,15 @@ class BMP180(object):
             while (time.ticks_ms() - t_start) <= t_pressure_ready:
                 yield None
             try:
-                self.MSB_raw = self._bmp_i2c.readfrom_mem(self._bmp_addr, 0xF6, 1)
-                self.LSB_raw = self._bmp_i2c.readfrom_mem(self._bmp_addr, 0xF7, 1)
-                self.XLSB_raw = self._bmp_i2c.readfrom_mem(self._bmp_addr, 0xF8, 1)
+                self.MSB_raw = self._bmp_i2c.readfrom_mem(
+                    self._bmp_addr, 0xF6, 1
+                )
+                self.LSB_raw = self._bmp_i2c.readfrom_mem(
+                    self._bmp_addr, 0xF7, 1
+                )
+                self.XLSB_raw = self._bmp_i2c.readfrom_mem(
+                    self._bmp_addr, 0xF8, 1
+                )
             except Exception:
                 yield None
 
@@ -153,12 +162,12 @@ class BMP180(object):
         except Exception:
             return 0.0
 
-        X1 = (UT - self._AC6) * (self._AC5 / (2 ** 15))
-        X2 = (self._MC * (2 ** 11)) / (X1 + self._MD)
+        X1 = (UT - self._AC6) * (self._AC5 / (2**15))
+        X2 = (self._MC * (2**11)) / (X1 + self._MD)
 
         self.B5_raw = X1 + X2
 
-        return ((self.B5_raw + 8) / (2 ** 4)) / 10
+        return ((self.B5_raw + 8) / (2**4)) / 10
 
     def absolute_pressure(self):
         """
@@ -176,14 +185,14 @@ class BMP180(object):
 
         UP = ((MSB << 16) + (LSB << 8) + XLSB) >> (8 - self.oversample_setting)
         B6 = self.B5_raw - 4000
-        X1 = (self._B2 * ((B6 ** 2) / (2 ** 12))) / (2 ** 11)
-        X2 = (self._AC2 * B6) / (2 ** 11)
+        X1 = (self._B2 * ((B6**2) / (2**12))) / (2**11)
+        X2 = (self._AC2 * B6) / (2**11)
         X3 = X1 + X2
         B3 = ((int((self._AC1 * 4 + X3)) << self.oversample_setting) + 2) / 4
-        X1 = (self._AC3 * B6) / (2 ** 13)
-        X2 = (self._B1 * (B6 ** 2 / 2 ** 12)) / (2 ** 16)
-        X3 = ((X1 + X2) + 2) / (2 ** 2)
-        B4 = abs(self._AC4) * (X3 + 32768) / (2 ** 15)
+        X1 = (self._AC3 * B6) / (2**13)
+        X2 = (self._B1 * (B6**2 / 2**12)) / (2**16)
+        X3 = ((X1 + X2) + 2) / (2**2)
+        B4 = abs(self._AC4) * (X3 + 32768) / (2**15)
         B7 = (abs(UP) - B3) * (50000 >> self.oversample_setting)
 
         if B7 < 0x80000000:
@@ -191,11 +200,11 @@ class BMP180(object):
         else:
             pressure = (B7 / B4) * 2
 
-        X1 = (pressure / (2 ** 8)) ** 2
-        X1 = (X1 * 3038) / (2 ** 16)
-        X2 = (-7357 * pressure) / (2 ** 16)
+        X1 = (pressure / (2**8)) ** 2
+        X1 = (X1 * 3038) / (2**16)
+        X2 = (-7357 * pressure) / (2**16)
 
-        return (pressure + (X1 + X2 + 3791) / (2 ** 4))
+        return pressure + (X1 + X2 + 3791) / (2**4)
 
     def pressure(self):
         """
@@ -203,8 +212,8 @@ class BMP180(object):
         """
         pressure = 0.0
         try:
-            pressure = (
-                self.absolute_pressure() / pow(1 - (self.altitude() / 44330.0), 2.9382)
+            pressure = self.absolute_pressure() / pow(
+                1 - (self.altitude() / 44330.0), 2.9382
             )
         except ZeroDivisionError:
             pass
@@ -216,8 +225,8 @@ class BMP180(object):
         """
         altitude = 0.0
         try:
-            altitude = (
-                44330 * (1 - ((self.absolute_pressure() / self.baseline) ** 0.1903))
+            altitude = 44330 * (
+                1 - ((self.absolute_pressure() / self.baseline) ** 0.1903)
             )
         except ZeroDivisionError:
             pass

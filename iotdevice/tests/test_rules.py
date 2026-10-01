@@ -1,17 +1,18 @@
-import unittest
-import sys
 import os
-from unittest.mock import Mock, MagicMock, patch, call
+import sys
+import unittest
+from unittest.mock import MagicMock, Mock, patch
+
+import rules
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+)
 
 # Mock MicroPython modules before importing
 sys.modules['network'] = MagicMock()
 sys.modules['time'] = MagicMock()
-
-import rules
-import utils
 
 
 class TestGetMqttMsg(unittest.TestCase):
@@ -228,7 +229,9 @@ class TestReadAnalogFunctions(unittest.TestCase):
 
         self.assertEqual(result, 39.8)
 
-        result = rules.read_analog_percentage(mock_pin, {}, threshold=4096, decimal_places=3)
+        result = rules.read_analog_percentage(
+            mock_pin, {}, threshold=4096, decimal_places=3
+        )
 
         self.assertEqual(result, 39.795)
 
@@ -269,7 +272,9 @@ class TestReadAnalogFunctions(unittest.TestCase):
         mock_pin = Mock()
         mock_pin.read.side_effect = [5000, 5000, 5000, 5000, 5000]
 
-        result = rules.read_analog_bool_sample(mock_pin, {}, threshold=4096, sample_size=5)
+        result = rules.read_analog_bool_sample(
+            mock_pin, {}, threshold=4096, sample_size=5
+        )
 
         self.assertTrue(result)
 
@@ -279,7 +284,9 @@ class TestReadAnalogFunctions(unittest.TestCase):
         mock_pin = Mock()
         mock_pin.read.side_effect = [5000, 5000, 3000, 5000, 5000]
 
-        result = rules.read_analog_bool_sample(mock_pin, {}, threshold=4096, sample_size=5)
+        result = rules.read_analog_bool_sample(
+            mock_pin, {}, threshold=4096, sample_size=5
+        )
 
         self.assertFalse(result)
 
@@ -292,9 +299,13 @@ class TestReadAnalogFunctions(unittest.TestCase):
         # Average: 62.5%
         mock_pin.read.side_effect = [2048, 4096, 3072, 1024, 2560]
 
-        result = rules.read_analog_percentage_sample(mock_pin, {}, threshold=4096, sample_size=5)
+        result = rules.read_analog_percentage_sample(
+            mock_pin, {}, threshold=4096, sample_size=5
+        )
 
-        self.assertEqual(result, 62.5)  # int((50 + 100 + 75 + 25 + 62.5) / 5) = 62
+        self.assertEqual(
+            result, 62.5
+        )  # int((50 + 100 + 75 + 25 + 62.5) / 5) = 62
         self.assertEqual(mock_sleep.call_count, 5)
 
     @patch('rules.time.sleep')
@@ -303,7 +314,9 @@ class TestReadAnalogFunctions(unittest.TestCase):
         mock_pin = Mock()
         mock_pin.read.side_effect = [4096, 4096, 4096, 4096, 4096]
 
-        result = rules.read_analog_percentage_sample(mock_pin, {}, threshold=4096)
+        result = rules.read_analog_percentage_sample(
+            mock_pin, {}, threshold=4096
+        )
 
         self.assertEqual(result, 100)
         self.assertEqual(mock_sleep.call_count, 5)
@@ -316,7 +329,9 @@ class TestReadAnalogFunctions(unittest.TestCase):
         # Average: 75%
         mock_pin.read.side_effect = [500, 1000, 750]
 
-        result = rules.read_analog_percentage_sample(mock_pin, {}, threshold=1000, sample_size=3)
+        result = rules.read_analog_percentage_sample(
+            mock_pin, {}, threshold=1000, sample_size=3
+        )
 
         self.assertEqual(result, 75)
         self.assertEqual(mock_sleep.call_count, 3)
@@ -403,7 +418,9 @@ class TestReadBMP180(unittest.TestCase):
         mock_bmp180_module.BMP180.return_value = mock_bmp
 
         with patch.dict('sys.modules', {'drivers.bmp180': mock_bmp180_module}):
-            result = rules.read_bmp180(mock_pin, {}, oversample=3, baseline=100000)
+            result = rules.read_bmp180(
+                mock_pin, {}, oversample=3, baseline=100000
+            )
 
         self.assertEqual(result['temperature'], 20.0)
         self.assertEqual(result['pressure'], 950.0)
@@ -454,7 +471,9 @@ class TestMqttToggle(unittest.TestCase):
         rules.MQTT_SUB_MSG['iot-devices/1/toggle'] = '1'
         mock_value_to_bool.return_value = True
 
-        result = rules.mqtt_toggle(mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle')
+        result = rules.mqtt_toggle(
+            mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle'
+        )
 
         mock_mqtt.set_callback.assert_called_once()
         mock_mqtt.subscribe.assert_called_once_with('iot-devices/1/toggle')
@@ -472,7 +491,9 @@ class TestMqttToggle(unittest.TestCase):
         rules.MQTT_SUB_MSG['iot-devices/1/toggle'] = '0'
         mock_value_to_bool.return_value = False
 
-        result = rules.mqtt_toggle(mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle')
+        result = rules.mqtt_toggle(
+            mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle'
+        )
 
         mock_value_to_bool.assert_called_once_with('0')
         mock_pin.off.assert_called_once()
@@ -486,7 +507,9 @@ class TestMqttToggle(unittest.TestCase):
         mock_mqtt = Mock()
         mock_value_to_bool.return_value = False
 
-        result = rules.mqtt_toggle(mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle')
+        result = rules.mqtt_toggle(
+            mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle'
+        )
 
         # Default value '0' is passed to value_to_bool when topic is missing
         mock_value_to_bool.assert_called_once_with('0')
@@ -503,7 +526,9 @@ class TestMqttToggle(unittest.TestCase):
         rules.MQTT_SUB_MSG['iot-devices/1/toggle'] = '1'
         mock_value_to_bool.return_value = True
 
-        result = rules.mqtt_toggle(mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle')
+        result = rules.mqtt_toggle(
+            mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle'
+        )
 
         # Should connect once for retry
         mock_mqtt.connect.assert_called_once()
@@ -517,7 +542,9 @@ class TestMqttToggle(unittest.TestCase):
         mock_mqtt.check_msg.side_effect = Exception('error')
 
         with self.assertRaises(Exception) as context:
-            rules.mqtt_toggle(mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle')
+            rules.mqtt_toggle(
+                mock_pin, {}, mqtt=mock_mqtt, topic='iot-devices/1/toggle'
+            )
 
         self.assertEqual(str(context.exception), 'MQTT Service is offline.')
 
@@ -535,7 +562,9 @@ class TestTimer(unittest.TestCase):
         mock_localtime.return_value = (2025, 11, 13, 14, 30, 0, 0, 0)
         mock_pin = Mock()
 
-        result = rules.timer(mock_pin, {}, gmt_start_time='10:00', gmt_end_time='18:00')
+        result = rules.timer(
+            mock_pin, {}, gmt_start_time='10:00', gmt_end_time='18:00'
+        )
 
         self.assertTrue(result)
 
@@ -546,7 +575,9 @@ class TestTimer(unittest.TestCase):
         mock_localtime.return_value = (2025, 11, 13, 8, 0, 0, 0, 0)
         mock_pin = Mock()
 
-        result = rules.timer(mock_pin, {}, gmt_start_time='10:00', gmt_end_time='18:00')
+        result = rules.timer(
+            mock_pin, {}, gmt_start_time='10:00', gmt_end_time='18:00'
+        )
 
         self.assertFalse(result)
 
@@ -557,7 +588,9 @@ class TestTimer(unittest.TestCase):
         mock_localtime.return_value = (2025, 11, 13, 20, 0, 0, 0, 0)
         mock_pin = Mock()
 
-        result = rules.timer(mock_pin, {}, gmt_start_time='10:00', gmt_end_time='18:00')
+        result = rules.timer(
+            mock_pin, {}, gmt_start_time='10:00', gmt_end_time='18:00'
+        )
 
         self.assertFalse(result)
 
@@ -568,7 +601,9 @@ class TestTimer(unittest.TestCase):
         mock_localtime.return_value = (2025, 11, 13, 9, 30, 0, 0, 0)
         mock_pin = Mock()
 
-        result = rules.timer(mock_pin, {}, gmt_start_time='08:00', gmt_end_time='12:00')
+        result = rules.timer(
+            mock_pin, {}, gmt_start_time='08:00', gmt_end_time='12:00'
+        )
 
         self.assertTrue(result)
 
@@ -579,7 +614,9 @@ class TestTimer(unittest.TestCase):
         mock_localtime.return_value = (2025, 11, 13, 10, 5, 0, 0, 0)
         mock_pin = Mock()
 
-        result = rules.timer(mock_pin, {}, gmt_start_time='10:00', gmt_end_time='11:00')
+        result = rules.timer(
+            mock_pin, {}, gmt_start_time='10:00', gmt_end_time='11:00'
+        )
 
         self.assertTrue(result)
 
@@ -590,7 +627,9 @@ class TestTimer(unittest.TestCase):
         mock_localtime.return_value = (2025, 11, 13, 10, 0, 0, 0, 0)
         mock_pin = Mock()
 
-        result = rules.timer(mock_pin, {}, gmt_start_time='10:00', gmt_end_time='18:00')
+        result = rules.timer(
+            mock_pin, {}, gmt_start_time='10:00', gmt_end_time='18:00'
+        )
 
         self.assertFalse(result)  # Uses > not >=
 
@@ -601,7 +640,9 @@ class TestTimer(unittest.TestCase):
         mock_localtime.return_value = (2025, 11, 13, 18, 0, 0, 0, 0)
         mock_pin = Mock()
 
-        result = rules.timer(mock_pin, {}, gmt_start_time='10:00', gmt_end_time='18:00')
+        result = rules.timer(
+            mock_pin, {}, gmt_start_time='10:00', gmt_end_time='18:00'
+        )
 
         self.assertFalse(result)  # Uses < not <=
 
@@ -617,7 +658,9 @@ class TestService(unittest.TestCase):
 
         result = rules.service(mock_pin, {}, url='http://example.com/api')
 
-        mock_get_response.assert_called_once_with('http://example.com/api', None)
+        mock_get_response.assert_called_once_with(
+            'http://example.com/api', None
+        )
         self.assertEqual(result, {"status": "success"})
 
     @patch('utils.get_service_response')
@@ -630,12 +673,11 @@ class TestService(unittest.TestCase):
             mock_pin,
             {},
             url='http://example.com/api',
-            auth_header='Authorization: Bearer token'
+            auth_header='Authorization: Bearer token',
         )
 
         mock_get_response.assert_called_once_with(
-            'http://example.com/api',
-            'Authorization: Bearer token'
+            'http://example.com/api', 'Authorization: Bearer token'
         )
         self.assertEqual(result, {"data": "value"})
 

@@ -1,7 +1,8 @@
 import json
-import network
 import socket
 import time
+
+import network
 
 
 def load_config():
@@ -89,8 +90,7 @@ def handle_conditions(rule_values, input_value):
                 xpaths.reverse()
                 condition_values[condition_type].append(
                     evaluate_condition(
-                        find_xpath_value(rule_values, xpaths),
-                        **condition
+                        find_xpath_value(rule_values, xpaths), **condition
                     )
                 )
 
@@ -117,16 +117,11 @@ def get_service_response(url, auth_header=None):
 
     address = socket.getaddrinfo(host, int(port))[0][-1]
     if auth_header:
-        request = 'GET /{path} HTTP/1.0\r\nHost: {host}\r\n{auth_header}\r\n\r\n'.format(
-            path=path,
-            host=host,
-            auth_header=auth_header
+        request = (
+            f'GET /{path} HTTP/1.0\r\nHost: {host}\r\n{auth_header}\r\n\r\n'
         )
     else:
-        request = 'GET /{path} HTTP/1.0\r\nHost: {host}\r\n\r\n'.format(
-            path=path,
-            host=host
-        )
+        request = f'GET /{path} HTTP/1.0\r\nHost: {host}\r\n\r\n'
 
     _socket = socket.socket()
     _socket.settimeout(15.0)

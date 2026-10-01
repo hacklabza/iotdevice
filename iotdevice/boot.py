@@ -1,11 +1,8 @@
 # This file is executed on every boot (including wake-boot from deepsleep)
+
 import machine
-import network
-import time
-import webrepl
-
 import utils
-
+import webrepl
 
 CONFIG = utils.load_config()
 WIFI_CONFIG = CONFIG['wifi']
@@ -16,7 +13,6 @@ wifi_connected = utils.connect_wifi(WIFI_CONFIG)
 
 # Connect network dependant services
 if wifi_connected:
-
     # Setup webrepl
     webrepl.start(password=MAIN_CONFIG['webrepl_password'])
 

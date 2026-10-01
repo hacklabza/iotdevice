@@ -1,10 +1,12 @@
 import gc
 import hashlib
 import json
-import ntptime
-import machine
 import sys
 import time
+
+import machine
+import ntptime
+
 try:
     import mip as package_manager
 except ImportError:
@@ -114,9 +116,11 @@ class Device:
             from umqtt.simple import MQTTClient
 
         self.mqtt = MQTTClient(
-            client_id=mqtt_config['client_id'].format(identifier=self.device_id),
+            client_id=mqtt_config['client_id'].format(
+                identifier=self.device_id
+            ),
             server=mqtt_config['host'],
-            keepalive=mqtt_config.get('keepalive', 65535)
+            keepalive=mqtt_config.get('keepalive', 65535),
         )
 
         # Setup last will to detect when the device disconnects ungracefully
@@ -124,7 +128,7 @@ class Device:
         if lastwill:
             self.mqtt.set_last_will(
                 topic=lastwill['topic'].format(identifier=self.device_id),
-                msg=lastwill['message']
+                msg=lastwill['message'],
             )
 
         self.mqtt.connect()
@@ -144,12 +148,12 @@ class Device:
             self.mqtt.connect()
         try:
             self.mqtt.publish(mqtt_queue, message)
-        except Exception:
+        except Exception as exc:
             if retry_count <= 3:
                 retry_count += 1
                 self._publish_mqtt_message(mqtt_queue, message, retry_count)
             else:
-                raise Exception('MQTT Service is offline.')
+                raise Exception('MQTT Service is offline.') from exc
 
     def log_message(self, message, level):
         """
@@ -159,7 +163,9 @@ class Device:
             print(message)
             return
 
-        if LOG_LEVELS.index(level) >= LOG_LEVELS.index(self.logging_config['level']):
+        if LOG_LEVELS.index(level) >= LOG_LEVELS.index(
+            self.logging_config['level']
+        ):
             mqtt_queue = f'iot-devices/{self.device_id}/logs'
             self._publish_mqtt_message(mqtt_queue, message)
 
@@ -244,16 +250,14 @@ class Device:
         """
         pins = {}
         for pin in self.pin_config:
-
             # Ignore pin configs which don't have assigned pins, these are pin-
             # less rules
             if pin['pin_number']:
-
                 # Setup the initial pin as in or out based on the config
                 if pin['analog']:
                     pins[pin['identifier']] = machine.ADC(
                         machine.Pin(pin['pin_number']),
-                        atten=machine.ADC.ATTN_11DB
+                        atten=machine.ADC.ATTN_11DB,
                     )
                 else:
                     if pin['read']:
@@ -262,10 +266,8 @@ class Device:
                         )
                     else:
                         pins[pin['identifier']] = machine.Signal(
-                            machine.Pin(
-                                pin['pin_number'], machine.Pin.OUT
-                            ),
-                            invert=False
+                            machine.Pin(pin['pin_number'], machine.Pin.OUT),
+                            invert=False,
                         )
 
             elif pin['i2c']:
@@ -301,7 +303,6 @@ class Device:
 
         run_count = 0
         while True:
-
             # Perform health checks on each iteration
             self.health_check()
 
@@ -318,19 +319,26 @@ class Device:
                 # actions
                 rule_params = {}
                 for input_key, input_value in rule['input'].items():
-
                     # Determine if the input contains a condition and evalute the
                     # condition against the previously stored rule values.
-                    if type(input_value) == dict and 'conditions' in input_value:
+                    if (
+                        isinstance(input_value, dict)
+                        and 'conditions' in input_value
+                    ):
                         condition_values = utils.handle_conditions(
                             rule_values=self.rule_values,
-                            input_value=input_value
+                            input_value=input_value,
                         )
-                        must, should = condition_values['must'], condition_values['should']
-                        rule_params[input_key] = all([
-                            all(must if must else [True]),
-                            any(should if should else [True])
-                        ])
+                        must, should = (
+                            condition_values['must'],
+                            condition_values['should'],
+                        )
+                        rule_params[input_key] = all(
+                            [
+                                all(must if must else [True]),
+                                any(should if should else [True]),
+                            ]
+                        )
 
                     else:
                         rule_params[input_key] = input_value
@@ -360,7 +368,7 @@ class Device:
                     self._log_debug(
                         'Completed rule: {action} with output: {output}.'.format(
                             action=rule['action'],
-                            output=self.rule_values[pin['identifier']]
+                            output=self.rule_values[pin['identifier']],
                         )
                     )
                 else:
@@ -380,7 +388,9 @@ class Device:
                 self._reset()
 
             # Free up memory periodically
-            memory_cleanup_interval = self.main_config.get('memory_cleanup_interval', 100)
+            memory_cleanup_interval = self.main_config.get(
+                'memory_cleanup_interval', 100
+            )
             if run_count % memory_cleanup_interval == 0:
                 self._cleanup_memory()
 

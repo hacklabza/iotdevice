@@ -1,9 +1,6 @@
-import json
-import socket
 import time
 
 import utils
-
 
 MQTT_SUB_MSG = {}
 
@@ -96,7 +93,9 @@ def read_analog_percentage(pin, rule, **kwargs):
     """
     threshold = kwargs.get('threshold', 4096)
     decimal_places = kwargs.get('decimal_places', 1)
-    return round((read_analog(pin, rule, **kwargs) / threshold) * 100, decimal_places)
+    return round(
+        (read_analog(pin, rule, **kwargs) / threshold) * 100, decimal_places
+    )
 
 
 def read_analog_avg_sample(pin, rule, **kwargs):
@@ -238,12 +237,12 @@ def mqtt_toggle(pin, rule, retry_count=0, **kwargs):
         mqtt.set_callback(get_mqtt_msg)
         mqtt.subscribe(topic)
         mqtt.check_msg()
-    except Exception:
+    except Exception as err:
         if retry_count <= 3:
             retry_count += 1
             return mqtt_toggle(pin, rule, retry_count, **kwargs)
         else:
-            raise Exception('MQTT Service is offline.')
+            raise Exception('MQTT Service is offline.') from err
 
     value = utils.value_to_bool(MQTT_SUB_MSG.get(topic, '0'))
     toggle(pin, rule, on=value)
@@ -259,7 +258,9 @@ def timer(pin, rule, **kwargs):
 
     now = time.localtime()
     current_hour = str(now[3] if now[3] > 9 else '0{hour}'.format(hour=now[3]))
-    current_minute = str(now[4] if now[4] > 9 else '0{hour}'.format(hour=now[4]))
+    current_minute = str(
+        now[4] if now[4] > 9 else '0{hour}'.format(hour=now[4])
+    )
     current_time = current_hour + current_minute
 
     return end_time > current_time > start_time

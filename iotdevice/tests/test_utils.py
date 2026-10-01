@@ -1,17 +1,19 @@
-import unittest
-import sys
-import os
 import json
-from unittest.mock import mock_open, patch, Mock, MagicMock
+import os
+import sys
+import unittest
+from unittest.mock import MagicMock, Mock, mock_open, patch
+
+import utils
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+)
 
 # Mock MicroPython modules
 sys.modules['network'] = MagicMock()
 sys.modules['time'] = MagicMock()
-
-import utils
 
 
 class TestLoadConfig(unittest.TestCase):
@@ -39,9 +41,9 @@ class TestLoadConfig(unittest.TestCase):
         mock_config = {
             "sensors": {
                 "temperature": {"pin": 4, "enabled": True},
-                "pressure": {"pin": 5, "enabled": False}
+                "pressure": {"pin": 5, "enabled": False},
             },
-            "thresholds": [10, 20, 30]
+            "thresholds": [10, 20, 30],
         }
         mock_file_content = json.dumps(mock_config)
 
@@ -64,7 +66,7 @@ class TestConnectWifi(unittest.TestCase):
         wifi_config = {
             'essid': 'TestNetwork',
             'password': 'testpass123',
-            'retry_count': 5
+            'retry_count': 5,
         }
 
         result = utils.connect_wifi(wifi_config)
@@ -75,19 +77,26 @@ class TestConnectWifi(unittest.TestCase):
 
     @patch('utils.time')
     @patch('utils.network')
-    def test_connect_wifi_successful_first_attempt(self, mock_network, mock_time):
+    def test_connect_wifi_successful_first_attempt(
+        self, mock_network, mock_time
+    ):
         """Test successful wifi connection on first attempt"""
         mock_wifi = Mock()
         # First call returns False (not connected), subsequent calls return True
         mock_wifi.isconnected.side_effect = [False, True, True]
-        mock_wifi.ifconfig.return_value = ['192.168.1.100', '255.255.255.0', '192.168.1.1', '8.8.8.8']
+        mock_wifi.ifconfig.return_value = [
+            '192.168.1.100',
+            '255.255.255.0',
+            '192.168.1.1',
+            '8.8.8.8',
+        ]
         mock_network.WLAN.return_value = mock_wifi
         mock_network.STA_IF = 'STA_IF'
 
         wifi_config = {
             'essid': 'TestNetwork',
             'password': 'testpass123',
-            'retry_count': 5
+            'retry_count': 5,
         }
 
         result = utils.connect_wifi(wifi_config)
@@ -99,19 +108,26 @@ class TestConnectWifi(unittest.TestCase):
 
     @patch('utils.time')
     @patch('utils.network')
-    def test_connect_wifi_successful_after_retries(self, mock_network, mock_time):
+    def test_connect_wifi_successful_after_retries(
+        self, mock_network, mock_time
+    ):
         """Test successful wifi connection after multiple retries"""
         mock_wifi = Mock()
         # Not connected initially, fails 2 times, then connects
         mock_wifi.isconnected.side_effect = [False, False, False, True, True]
-        mock_wifi.ifconfig.return_value = ['192.168.1.100', '255.255.255.0', '192.168.1.1', '8.8.8.8']
+        mock_wifi.ifconfig.return_value = [
+            '192.168.1.100',
+            '255.255.255.0',
+            '192.168.1.1',
+            '8.8.8.8',
+        ]
         mock_network.WLAN.return_value = mock_wifi
         mock_network.STA_IF = 'STA_IF'
 
         wifi_config = {
             'essid': 'TestNetwork',
             'password': 'testpass123',
-            'retry_count': 5
+            'retry_count': 5,
         }
 
         result = utils.connect_wifi(wifi_config)
@@ -134,7 +150,7 @@ class TestConnectWifi(unittest.TestCase):
         wifi_config = {
             'essid': 'TestNetwork',
             'password': 'testpass123',
-            'retry_count': 3
+            'retry_count': 3,
         }
 
         result = utils.connect_wifi(wifi_config)
@@ -146,19 +162,26 @@ class TestConnectWifi(unittest.TestCase):
 
     @patch('utils.time')
     @patch('utils.network')
-    def test_connect_wifi_prints_connection_attempts(self, mock_network, mock_time):
+    def test_connect_wifi_prints_connection_attempts(
+        self, mock_network, mock_time
+    ):
         """Test that connection attempts are printed correctly"""
         mock_wifi = Mock()
         # Not connected initially, fails once, then connects
         mock_wifi.isconnected.side_effect = [False, False, True, True]
-        mock_wifi.ifconfig.return_value = ['10.0.0.50', '255.255.255.0', '10.0.0.1', '8.8.8.8']
+        mock_wifi.ifconfig.return_value = [
+            '10.0.0.50',
+            '255.255.255.0',
+            '10.0.0.1',
+            '8.8.8.8',
+        ]
         mock_network.WLAN.return_value = mock_wifi
         mock_network.STA_IF = 'STA_IF'
 
         wifi_config = {
             'essid': 'MyWiFi',
             'password': 'mypassword',
-            'retry_count': 5
+            'retry_count': 5,
         }
 
         with patch('builtins.print') as mock_print:
@@ -167,9 +190,15 @@ class TestConnectWifi(unittest.TestCase):
         self.assertTrue(result)
         # Check that appropriate messages were printed
         print_calls = [str(call) for call in mock_print.call_args_list]
-        self.assertTrue(any('Connecting to wifi' in str(call) for call in print_calls))
-        self.assertTrue(any('Connection attempt' in str(call) for call in print_calls))
-        self.assertTrue(any('Connected to MyWiFi' in str(call) for call in print_calls))
+        self.assertTrue(
+            any('Connecting to wifi' in str(call) for call in print_calls)
+        )
+        self.assertTrue(
+            any('Connection attempt' in str(call) for call in print_calls)
+        )
+        self.assertTrue(
+            any('Connected to MyWiFi' in str(call) for call in print_calls)
+        )
         self.assertTrue(any('10.0.0.50' in str(call) for call in print_calls))
 
 
@@ -202,7 +231,7 @@ class TestFindXpathValue(unittest.TestCase):
         response = {
             "sensors": [
                 {"name": "temp", "value": 25},
-                {"name": "pressure", "value": 1013}
+                {"name": "pressure", "value": 1013},
             ]
         }
         xpaths = ["value", "0", "sensors"]  # reversed
@@ -348,7 +377,7 @@ class TestHandleConditions(unittest.TestCase):
             "conditions": {
                 "must": {
                     "sensor1": {"operator": "gt", "value": 20},
-                    "sensor2": {"operator": "gt", "value": 25}
+                    "sensor2": {"operator": "gt", "value": 25},
                 }
             }
         }
@@ -363,7 +392,7 @@ class TestHandleConditions(unittest.TestCase):
             "conditions": {
                 "must": {
                     "sensor1": {"operator": "gt", "value": 20},
-                    "sensor2": {"operator": "gt", "value": 25}
+                    "sensor2": {"operator": "gt", "value": 25},
                 }
             }
         }
@@ -377,7 +406,7 @@ class TestHandleConditions(unittest.TestCase):
             "conditions": {
                 "should": {
                     "sensor1": {"operator": "gt", "value": 20},
-                    "sensor2": {"operator": "gt", "value": 20}
+                    "sensor2": {"operator": "gt", "value": 20},
                 }
             }
         }
@@ -390,13 +419,11 @@ class TestHandleConditions(unittest.TestCase):
         rule_values = {"temp": 25, "pressure": 1013, "humidity": 60}
         input_value = {
             "conditions": {
-                "must": {
-                    "temp": {"operator": "gt", "value": 20}
-                },
+                "must": {"temp": {"operator": "gt", "value": 20}},
                 "should": {
                     "pressure": {"operator": "gt", "value": 1000},
-                    "humidity": {"operator": "lt", "value": 70}
-                }
+                    "humidity": {"operator": "lt", "value": 70},
+                },
             }
         }
         result = utils.handle_conditions(rule_values, input_value)
@@ -405,17 +432,12 @@ class TestHandleConditions(unittest.TestCase):
 
     def test_handle_nested_xpath_conditions(self):
         """Test conditions with nested xpath"""
-        rule_values = {
-            "sensors": {
-                "temperature": 25,
-                "pressure": 1013
-            }
-        }
+        rule_values = {"sensors": {"temperature": 25, "pressure": 1013}}
         input_value = {
             "conditions": {
                 "must": {
                     "sensors.temperature": {"operator": "eq", "value": 25},
-                    "sensors.pressure": {"operator": "gt", "value": 1000}
+                    "sensors.pressure": {"operator": "gt", "value": 1000},
                 }
             }
         }
@@ -424,14 +446,12 @@ class TestHandleConditions(unittest.TestCase):
 
     def test_handle_array_xpath_conditions(self):
         """Test conditions with array xpath"""
-        rule_values = {
-            "readings": [10, 20, 30, 40]
-        }
+        rule_values = {"readings": [10, 20, 30, 40]}
         input_value = {
             "conditions": {
                 "must": {
                     "readings.0": {"operator": "eq", "value": 10},
-                    "readings.2": {"operator": "gt", "value": 25}
+                    "readings.2": {"operator": "gt", "value": 25},
                 }
             }
         }
@@ -443,9 +463,7 @@ class TestHandleConditions(unittest.TestCase):
         rule_values = {"sensor1": 25}
         input_value = {
             "conditions": {
-                "must": {
-                    "nonexistent": {"operator": "eq", "value": 25}
-                }
+                "must": {"nonexistent": {"operator": "eq", "value": 25}}
             }
         }
         result = utils.handle_conditions(rule_values, input_value)
@@ -454,9 +472,7 @@ class TestHandleConditions(unittest.TestCase):
     def test_handle_empty_conditions(self):
         """Test with empty conditions dict"""
         rule_values = {"sensor1": 25}
-        input_value = {
-            "conditions": {}
-        }
+        input_value = {"conditions": {}}
         result = utils.handle_conditions(rule_values, input_value)
         self.assertEqual(result["must"], [])
         self.assertEqual(result["should"], [])
@@ -466,9 +482,7 @@ class TestHandleConditions(unittest.TestCase):
         rule_values = {"sensor1": 25}
         input_value = {
             "conditions": {
-                "unknown_type": {
-                    "sensor1": {"operator": "eq", "value": 25}
-                }
+                "unknown_type": {"sensor1": {"operator": "eq", "value": 25}}
             }
         }
         result = utils.handle_conditions(rule_values, input_value)
@@ -482,7 +496,7 @@ class TestHandleConditions(unittest.TestCase):
             "conditions": {
                 "must": {
                     "status": {"operator": "eq", "value": "active"},
-                    "count": {"operator": "eq", "value": 5}
+                    "count": {"operator": "eq", "value": 5},
                 }
             }
         }
@@ -492,18 +506,15 @@ class TestHandleConditions(unittest.TestCase):
     def test_handle_deep_nested_xpath(self):
         """Test deeply nested xpath conditions"""
         rule_values = {
-            "device": {
-                "sensors": {
-                    "environmental": {
-                        "temperature": 25
-                    }
-                }
-            }
+            "device": {"sensors": {"environmental": {"temperature": 25}}}
         }
         input_value = {
             "conditions": {
                 "must": {
-                    "device.sensors.environmental.temperature": {"operator": "gt", "value": 20}
+                    "device.sensors.environmental.temperature": {
+                        "operator": "gt",
+                        "value": 20,
+                    }
                 }
             }
         }
@@ -595,16 +606,18 @@ class TestGetServiceResponse(unittest.TestCase):
     def test_get_service_response_success(self, mock_getaddrinfo, mock_socket):
         """Test successful service response"""
         # Setup mocks
-        mock_getaddrinfo.return_value = [(None, None, None, None, ('192.168.1.1', 80))]
+        mock_getaddrinfo.return_value = [
+            (None, None, None, None, ('192.168.1.1', 80))
+        ]
         mock_sock = Mock()
         mock_socket.return_value = mock_sock
 
         # Response body with proper line breaks (split() will separate by whitespace)
-        response_body = 'HTTP/1.1\n200\nOK\nContent-Type:\napplication/json\n\n{"result":"success"}'
-        mock_sock.recv.side_effect = [
-            bytes(response_body, 'utf8'),
-            b''
-        ]
+        response_body = (
+            'HTTP/1.1\n200\nOK\nContent-Type:\napplication/json\n\n'
+            '{"result":"success"}'
+        )
+        mock_sock.recv.side_effect = [bytes(response_body, 'utf8'), b'']
 
         result = utils.get_service_response('http://example.com/api/data')
 
@@ -614,16 +627,22 @@ class TestGetServiceResponse(unittest.TestCase):
 
     @patch('utils.socket.socket')
     @patch('utils.socket.getaddrinfo')
-    def test_get_service_response_with_auth(self, mock_getaddrinfo, mock_socket):
+    def test_get_service_response_with_auth(
+        self, mock_getaddrinfo, mock_socket
+    ):
         """Test service response with auth header"""
-        mock_getaddrinfo.return_value = [(None, None, None, None, ('192.168.1.1', 80))]
+        mock_getaddrinfo.return_value = [
+            (None, None, None, None, ('192.168.1.1', 80))
+        ]
         mock_sock = Mock()
         mock_socket.return_value = mock_sock
 
         response_body = 'HTTP/1.1\n200\nOK\n\n{"data":"value"}'
         mock_sock.recv.side_effect = [bytes(response_body, 'utf8'), b'']
 
-        result = utils.get_service_response('http://example.com/api', 'Authorization: Bearer token')
+        result = utils.get_service_response(
+            'http://example.com/api', 'Authorization: Bearer token'
+        )
 
         self.assertEqual(result, {"data": "value"})
         # Verify auth header was included in request
@@ -632,9 +651,13 @@ class TestGetServiceResponse(unittest.TestCase):
 
     @patch('utils.socket.socket')
     @patch('utils.socket.getaddrinfo')
-    def test_get_service_response_with_port(self, mock_getaddrinfo, mock_socket):
+    def test_get_service_response_with_port(
+        self, mock_getaddrinfo, mock_socket
+    ):
         """Test service response with custom port"""
-        mock_getaddrinfo.return_value = [(None, None, None, None, ('192.168.1.1', 8080))]
+        mock_getaddrinfo.return_value = [
+            (None, None, None, None, ('192.168.1.1', 8080))
+        ]
         mock_sock = Mock()
         mock_socket.return_value = mock_sock
 
@@ -647,9 +670,13 @@ class TestGetServiceResponse(unittest.TestCase):
 
     @patch('utils.socket.socket')
     @patch('utils.socket.getaddrinfo')
-    def test_get_service_response_201_status(self, mock_getaddrinfo, mock_socket):
+    def test_get_service_response_201_status(
+        self, mock_getaddrinfo, mock_socket
+    ):
         """Test service response with 201 status"""
-        mock_getaddrinfo.return_value = [(None, None, None, None, ('192.168.1.1', 80))]
+        mock_getaddrinfo.return_value = [
+            (None, None, None, None, ('192.168.1.1', 80))
+        ]
         mock_sock = Mock()
         mock_socket.return_value = mock_sock
 
@@ -662,9 +689,13 @@ class TestGetServiceResponse(unittest.TestCase):
 
     @patch('utils.socket.socket')
     @patch('utils.socket.getaddrinfo')
-    def test_get_service_response_404_status(self, mock_getaddrinfo, mock_socket):
+    def test_get_service_response_404_status(
+        self, mock_getaddrinfo, mock_socket
+    ):
         """Test service response with 404 status returns None"""
-        mock_getaddrinfo.return_value = [(None, None, None, None, ('192.168.1.1', 80))]
+        mock_getaddrinfo.return_value = [
+            (None, None, None, None, ('192.168.1.1', 80))
+        ]
         mock_sock = Mock()
         mock_socket.return_value = mock_sock
 

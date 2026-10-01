@@ -240,7 +240,7 @@ screen /dev/tty.usbserial-02031CC9 115200
 }
 ```
 
-I.e. The solenoid relay will switch on if the soil moisture returns dry, the time is between 07:00 and 15:00, it will not rain today and tomorrow, the temperature is above 10 and it is not currently raining or it has been toggled on by via MQTT (override).
+I.e. The solenoid relay will switch on if the soil moisture returns dry, the time is between 07:00 and 15:00, it will not rain today and tomorrow, the temperature is above 10 and it is not currently raining and it has been toggled on by via MQTT (override).
 
 ### Testing
 

@@ -36,9 +36,18 @@ def connect_wifi(wifi_config):
                         essid=essid, ip_address=ip_address
                     )
                 )
+                print('MAC address: {mac}'.format(mac=get_mac_address()))
                 break
 
     return wifi.isconnected()
+
+
+def get_mac_address():
+    """
+    Returns the device's WLAN MAC address as a colon-separated hex string.
+    """
+    mac = network.WLAN(network.STA_IF).config('mac')
+    return ':'.join('{:02x}'.format(b) for b in mac)
 
 
 def find_xpath_value(response, xpaths):

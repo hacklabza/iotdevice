@@ -272,8 +272,8 @@ class Device:
 
             elif pin['i2c']:
                 scl, sda = self._get_i2c_pins()
-                pins[pin['identifier']] = machine.SoftI2C(
-                    scl=scl, sda=sda, freq=100_000
+                pins[pin['identifier']] = machine.I2C(
+                    0, scl=scl, sda=sda, freq=100_000
                 )
 
             else:
@@ -405,7 +405,7 @@ def handle_fatal_error(error_msg, device=None):
         device.log_message(error_msg, ERROR)
     else:
         print(f'Fatal Error: {error_msg}')
-    time.sleep(10)
+    time.sleep(60)
     machine.reset()
 
 

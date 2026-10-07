@@ -42,9 +42,16 @@ def cli():
     help='The usb port the device is connect to',
 )
 @click.option(
+    '--baudrate',
+    required=True,
+    type=str,
+    default='460800',
+    help='The baudrate for the connection',
+)
+@click.option(
     '--bin-file', required=True, type=str, help='The path of the bin file'
 )
-def flash(chip, port, bin_file):
+def flash(chip, port, baudrate, bin_file):
     """
     Erases the chip's flash and writes it to the chip again.
     """
@@ -63,7 +70,7 @@ def flash(chip, port, bin_file):
             '--port',
             port,
             '--baud',
-            '460800',
+            baudrate,
             'write-flash',
             '-z',
             '0x1000',

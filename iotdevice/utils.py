@@ -50,6 +50,16 @@ def get_mac_address():
     return ':'.join('{:02x}'.format(b) for b in mac)
 
 
+def get_wifi_signal_strength():
+    """Estimate Wi-Fi strength as 0-100% (-100 to -50 dBm), or 0 offline."""
+    wifi = network.WLAN(network.STA_IF)
+    if not wifi.isconnected():
+        return 0
+
+    rssi = wifi.status('rssi')
+    return max(0, min(100, int(2 * (rssi + 100))))
+
+
 def find_xpath_value(response, xpaths):
     """
     Recursively finds a value in a nested dict/list structure based on a list of xpaths.
@@ -116,7 +126,12 @@ def value_to_bool(value):
     return bool(value)
 
 
-def get_service_response(url, auth_header=None):
+def call_service(url, auth_header=None, method='GET', payload=None):
+    """Call an HTTP service, optionally sending a JSON payload with POST."""
+    method = method.upper()
+    if method not in ('GET', 'POST'):
+        raise ValueError('Only GET and POST are supported')
+
     response_body = ''
 
     _, _, host, path = url.split('/', 3)
@@ -125,17 +140,21 @@ def get_service_response(url, auth_header=None):
         host, port = host.split(':', 1)
 
     address = socket.getaddrinfo(host, int(port))[0][-1]
+    request = f'{method} /{path} HTTP/1.0\r\nHost: {host}\r\n'
     if auth_header:
-        request = (
-            f'GET /{path} HTTP/1.0\r\nHost: {host}\r\n{auth_header}\r\n\r\n'
+        request += f'{auth_header}\r\n'
+    body = b''
+    if method == 'POST':
+        if payload is not None:
+            body = json.dumps(payload).encode('utf8')
+        request += (
+            f'Content-Type: application/json\r\nContent-Length: {len(body)}\r\n'
         )
-    else:
-        request = f'GET /{path} HTTP/1.0\r\nHost: {host}\r\n\r\n'
 
     _socket = socket.socket()
     _socket.settimeout(15.0)
     _socket.connect(address)
-    _socket.send(bytes(request, 'utf8'))
+    _socket.send(request.encode('utf8') + b'\r\n' + body)
 
     while True:
         data = _socket.recv(100)
@@ -145,8 +164,8 @@ def get_service_response(url, auth_header=None):
             break
     _socket.close()
 
-    response_lines = response_body.split()
-    if response_lines[1] in ['200', '201', '301']:
-        return json.loads(response_lines[-1])
+    headers, body = response_body.split('\r\n\r\n', 1)
+    if headers.split()[1] in ['200', '201', '301']:
+        return json.loads(body)
 
     return None

@@ -84,6 +84,7 @@ class TestConnectWifi(unittest.TestCase):
         mock_wifi = Mock()
         # First call returns False (not connected), subsequent calls return True
         mock_wifi.isconnected.side_effect = [False, True, True]
+        mock_wifi.config.return_value = b'\x00\x11\x22\x33\x44\x55'
         mock_wifi.ifconfig.return_value = [
             '192.168.1.100',
             '255.255.255.0',
@@ -115,6 +116,7 @@ class TestConnectWifi(unittest.TestCase):
         mock_wifi = Mock()
         # Not connected initially, fails 2 times, then connects
         mock_wifi.isconnected.side_effect = [False, False, False, True, True]
+        mock_wifi.config.return_value = b'\x00\x11\x22\x33\x44\x55'
         mock_wifi.ifconfig.return_value = [
             '192.168.1.100',
             '255.255.255.0',
@@ -169,6 +171,7 @@ class TestConnectWifi(unittest.TestCase):
         mock_wifi = Mock()
         # Not connected initially, fails once, then connects
         mock_wifi.isconnected.side_effect = [False, False, True, True]
+        mock_wifi.config.return_value = b'\x00\x11\x22\x33\x44\x55'
         mock_wifi.ifconfig.return_value = [
             '10.0.0.50',
             '255.255.255.0',
@@ -200,6 +203,47 @@ class TestConnectWifi(unittest.TestCase):
             any('Connected to MyWiFi' in str(call) for call in print_calls)
         )
         self.assertTrue(any('10.0.0.50' in str(call) for call in print_calls))
+        self.assertTrue(
+            any(
+                'MAC address: 00:11:22:33:44:55' in str(call)
+                for call in print_calls
+            )
+        )
+
+
+class TestGetWifiSignalStrength(unittest.TestCase):
+    @patch('utils.network')
+    def test_connected_signal_strength(self, mock_network):
+        mock_wifi = mock_network.WLAN.return_value
+        mock_wifi.isconnected.return_value = True
+
+        for rssi, expected in (
+            (-110, 0),
+            (-100, 0),
+            (-90, 20),
+            (-75, 50),
+            (-60, 80),
+            (-50, 100),
+            (-30, 100),
+        ):
+            with self.subTest(rssi=rssi):
+                mock_wifi.status.return_value = rssi
+
+                result = utils.get_wifi_signal_strength()
+
+                self.assertEqual(result, expected)
+                self.assertIsInstance(result, int)
+
+        mock_network.WLAN.assert_called_with(mock_network.STA_IF)
+        mock_wifi.status.assert_called_with('rssi')
+
+    @patch('utils.network')
+    def test_disconnected_signal_strength(self, mock_network):
+        mock_wifi = mock_network.WLAN.return_value
+        mock_wifi.isconnected.return_value = False
+
+        self.assertEqual(utils.get_wifi_signal_strength(), 0)
+        mock_wifi.status.assert_not_called()
 
 
 class TestFindXpathValue(unittest.TestCase):
@@ -598,12 +642,12 @@ class TestValueToBool(unittest.TestCase):
         self.assertTrue(utils.value_to_bool(-1))
 
 
-class TestGetServiceResponse(unittest.TestCase):
-    """Test cases for get_service_response function"""
+class TestCallService(unittest.TestCase):
+    """Test cases for call_service function"""
 
     @patch('utils.socket.socket')
     @patch('utils.socket.getaddrinfo')
-    def test_get_service_response_success(self, mock_getaddrinfo, mock_socket):
+    def test_call_service_success(self, mock_getaddrinfo, mock_socket):
         """Test successful service response"""
         # Setup mocks
         mock_getaddrinfo.return_value = [
@@ -612,24 +656,24 @@ class TestGetServiceResponse(unittest.TestCase):
         mock_sock = Mock()
         mock_socket.return_value = mock_sock
 
-        # Response body with proper line breaks (split() will separate by whitespace)
         response_body = (
-            'HTTP/1.1\n200\nOK\nContent-Type:\napplication/json\n\n'
+            'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n'
             '{"result":"success"}'
         )
         mock_sock.recv.side_effect = [bytes(response_body, 'utf8'), b'']
 
-        result = utils.get_service_response('http://example.com/api/data')
+        result = utils.call_service('http://example.com/api/data')
 
         self.assertEqual(result, {"result": "success"})
         mock_sock.connect.assert_called_once_with(('192.168.1.1', 80))
         mock_sock.settimeout.assert_called_once_with(15.0)
+        mock_sock.send.assert_called_once_with(
+            b'GET /api/data HTTP/1.0\r\nHost: example.com\r\n\r\n'
+        )
 
     @patch('utils.socket.socket')
     @patch('utils.socket.getaddrinfo')
-    def test_get_service_response_with_auth(
-        self, mock_getaddrinfo, mock_socket
-    ):
+    def test_call_service_with_auth(self, mock_getaddrinfo, mock_socket):
         """Test service response with auth header"""
         mock_getaddrinfo.return_value = [
             (None, None, None, None, ('192.168.1.1', 80))
@@ -637,10 +681,10 @@ class TestGetServiceResponse(unittest.TestCase):
         mock_sock = Mock()
         mock_socket.return_value = mock_sock
 
-        response_body = 'HTTP/1.1\n200\nOK\n\n{"data":"value"}'
+        response_body = 'HTTP/1.1 200 OK\r\n\r\n{"data":"value"}'
         mock_sock.recv.side_effect = [bytes(response_body, 'utf8'), b'']
 
-        result = utils.get_service_response(
+        result = utils.call_service(
             'http://example.com/api', 'Authorization: Bearer token'
         )
 
@@ -651,9 +695,7 @@ class TestGetServiceResponse(unittest.TestCase):
 
     @patch('utils.socket.socket')
     @patch('utils.socket.getaddrinfo')
-    def test_get_service_response_with_port(
-        self, mock_getaddrinfo, mock_socket
-    ):
+    def test_call_service_with_port(self, mock_getaddrinfo, mock_socket):
         """Test service response with custom port"""
         mock_getaddrinfo.return_value = [
             (None, None, None, None, ('192.168.1.1', 8080))
@@ -661,18 +703,16 @@ class TestGetServiceResponse(unittest.TestCase):
         mock_sock = Mock()
         mock_socket.return_value = mock_sock
 
-        response_body = 'HTTP/1.1\n200\nOK\n\n{"status":"ok"}'
+        response_body = 'HTTP/1.1 200 OK\r\n\r\n{"status":"ok"}'
         mock_sock.recv.side_effect = [bytes(response_body, 'utf8'), b'']
 
-        result = utils.get_service_response('http://example.com:8080/api')
+        result = utils.call_service('http://example.com:8080/api')
 
         self.assertEqual(result, {"status": "ok"})
 
     @patch('utils.socket.socket')
     @patch('utils.socket.getaddrinfo')
-    def test_get_service_response_201_status(
-        self, mock_getaddrinfo, mock_socket
-    ):
+    def test_call_service_201_status(self, mock_getaddrinfo, mock_socket):
         """Test service response with 201 status"""
         mock_getaddrinfo.return_value = [
             (None, None, None, None, ('192.168.1.1', 80))
@@ -680,18 +720,16 @@ class TestGetServiceResponse(unittest.TestCase):
         mock_sock = Mock()
         mock_socket.return_value = mock_sock
 
-        response_body = 'HTTP/1.1\n201\nCreated\n\n{"id":123}'
+        response_body = 'HTTP/1.1 201 Created\r\n\r\n{"id":123}'
         mock_sock.recv.side_effect = [bytes(response_body, 'utf8'), b'']
 
-        result = utils.get_service_response('http://example.com/api')
+        result = utils.call_service('http://example.com/api')
 
         self.assertEqual(result, {"id": 123})
 
     @patch('utils.socket.socket')
     @patch('utils.socket.getaddrinfo')
-    def test_get_service_response_404_status(
-        self, mock_getaddrinfo, mock_socket
-    ):
+    def test_call_service_404_status(self, mock_getaddrinfo, mock_socket):
         """Test service response with 404 status returns None"""
         mock_getaddrinfo.return_value = [
             (None, None, None, None, ('192.168.1.1', 80))
@@ -699,12 +737,72 @@ class TestGetServiceResponse(unittest.TestCase):
         mock_sock = Mock()
         mock_socket.return_value = mock_sock
 
-        response_body = 'HTTP/1.1\n404\nNotFound\n\n{"error":"not found"}'
+        response_body = 'HTTP/1.1 404 NotFound\r\n\r\n{"error":"not found"}'
         mock_sock.recv.side_effect = [bytes(response_body, 'utf8'), b'']
 
-        result = utils.get_service_response('http://example.com/api')
+        result = utils.call_service('http://example.com/api')
 
         self.assertIsNone(result)
+
+    @patch('utils.socket.socket')
+    @patch('utils.socket.getaddrinfo')
+    def test_call_service_post(self, mock_getaddrinfo, mock_socket):
+        mock_getaddrinfo.return_value = [
+            (None, None, None, None, ('192.168.1.1', 80))
+        ]
+        mock_sock = mock_socket.return_value
+        mock_sock.recv.side_effect = [
+            b'HTTP/1.1 201 Created\r\n\r\n{ "message": "item created" }',
+            b'',
+        ]
+
+        for payload in ({'name': 'caf\u00e9'}, {}, [], False, 0):
+            with self.subTest(payload=payload):
+                mock_sock.recv.side_effect = [
+                    b'HTTP/1.1 201 Created\r\n\r\n'
+                    b'{ "message": "item created" }',
+                    b'',
+                ]
+                result = utils.call_service(
+                    'http://example.com/api',
+                    'Authorization: Bearer token',
+                    method='post',
+                    payload=payload,
+                )
+
+                headers, body = mock_sock.send.call_args[0][0].split(
+                    b'\r\n\r\n', 1
+                )
+                self.assertTrue(headers.startswith(b'POST /api HTTP/1.0'))
+                self.assertIn(b'Authorization: Bearer token', headers)
+                self.assertIn(b'Content-Type: application/json', headers)
+                self.assertIn(
+                    f'Content-Length: {len(body)}'.encode('utf8'), headers
+                )
+                self.assertEqual(json.loads(body), payload)
+                self.assertEqual(result, {'message': 'item created'})
+
+    @patch('utils.socket.socket')
+    @patch('utils.socket.getaddrinfo')
+    def test_call_service_post_without_payload(
+        self, mock_getaddrinfo, mock_socket
+    ):
+        mock_getaddrinfo.return_value = [
+            (None, None, None, None, ('192.168.1.1', 80))
+        ]
+        mock_sock = mock_socket.return_value
+        mock_sock.recv.side_effect = [b'HTTP/1.1 200 OK\r\n\r\n{}', b'']
+
+        self.assertEqual(
+            utils.call_service('http://example.com/api', method='POST'), {}
+        )
+        self.assertIn(
+            b'Content-Length: 0\r\n\r\n', mock_sock.send.call_args[0][0]
+        )
+
+    def test_call_service_unsupported_method(self):
+        with self.assertRaises(ValueError):
+            utils.call_service('http://example.com/api', method='DELETE')
 
 
 if __name__ == '__main__':

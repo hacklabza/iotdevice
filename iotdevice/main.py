@@ -287,8 +287,10 @@ class Device:
         """
 
         # Check Wifi connection
-        utils.get_service_response(
-            url=self.health_config['url'].format(identifier=self.device_id)
+        utils.call_service(
+            url=self.health_config['url'].format(identifier=self.device_id),
+            method='POST',
+            payload={'wifi_signal_strength': utils.get_wifi_signal_strength()},
         )
 
         # Check MQTT connection

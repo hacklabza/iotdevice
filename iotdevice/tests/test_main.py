@@ -783,26 +783,39 @@ class TestPinCreation(unittest.TestCase):
         with patch('main.sys.platform', 'esp8266'):
             device, _, mock_machine = create_mock_device(config)
 
-            # Should have created a SoftI2C interface
             self.assertIn('i2c-sensor', device.pins)
-            mock_machine.SoftI2C.assert_called()
+            mock_machine.I2C.assert_called_once_with(
+                0,
+                scl=mock_machine.Pin.return_value,
+                sda=mock_machine.Pin.return_value,
+                freq=100_000,
+            )
+            self.assertIs(
+                device.pins['i2c-sensor'], mock_machine.I2C.return_value
+            )
 
 
 class TestHealthCheck(unittest.TestCase):
     """Test cases for health check functionality"""
 
-    @patch('main.utils.get_service_response')
-    def test_health_check_calls_service_and_mqtt_ping(self, mock_get_service):
+    @patch('main.utils.call_service')
+    @patch('main.utils.get_wifi_signal_strength', return_value=75)
+    def test_health_check_calls_service_and_mqtt_ping(
+        self, mock_signal_strength, mock_call_service
+    ):
         """Test health check calls both service endpoint and MQTT ping"""
-        mock_get_service.return_value = {"status": "ok"}
+        mock_call_service.return_value = {"status": "ok"}
 
         device, mock_mqtt, _ = create_mock_device()
         device.health_check()
 
         # Should call health service endpoint
-        mock_get_service.assert_called_once_with(
-            url='http://192.168.0.101:8000/health/b6d49b8d-c31f-4809-a955-a814de6ab3f3/'
+        mock_call_service.assert_called_once_with(
+            url='http://192.168.0.101:8000/health/b6d49b8d-c31f-4809-a955-a814de6ab3f3/',
+            method='POST',
+            payload={'wifi_signal_strength': 75},
         )
+        mock_signal_strength.assert_called_once_with()
         # Should ping MQTT broker
         mock_mqtt.ping.assert_called_once()
 
@@ -822,7 +835,7 @@ class TestHandleFatalError(unittest.TestCase):
         mock_print.assert_called_once_with(
             'Fatal Error: Critical error occurred'
         )
-        mock_sleep.assert_called_once_with(10)
+        mock_sleep.assert_called_once_with(60)
         mock_reset.assert_called_once()
 
     @patch('main.time.sleep')
@@ -835,7 +848,7 @@ class TestHandleFatalError(unittest.TestCase):
 
         # Should log error via MQTT
         mock_mqtt.publish.assert_called()
-        mock_sleep.assert_called_once_with(10)
+        mock_sleep.assert_called_once_with(60)
         mock_reset.assert_called_once()
 
 

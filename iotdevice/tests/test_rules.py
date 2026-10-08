@@ -650,7 +650,7 @@ class TestTimer(unittest.TestCase):
 class TestService(unittest.TestCase):
     """Test cases for service function"""
 
-    @patch('utils.get_service_response')
+    @patch('utils.call_service')
     def test_service_without_auth(self, mock_get_response):
         """Test service call without auth header"""
         mock_pin = Mock()
@@ -663,7 +663,7 @@ class TestService(unittest.TestCase):
         )
         self.assertEqual(result, {"status": "success"})
 
-    @patch('utils.get_service_response')
+    @patch('utils.call_service')
     def test_service_with_auth(self, mock_get_response):
         """Test service call with auth header"""
         mock_pin = Mock()
@@ -681,7 +681,7 @@ class TestService(unittest.TestCase):
         )
         self.assertEqual(result, {"data": "value"})
 
-    @patch('utils.get_service_response')
+    @patch('utils.call_service')
     def test_service_returns_none(self, mock_get_response):
         """Test service call returning None"""
         mock_pin = Mock()

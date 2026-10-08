@@ -273,4 +273,4 @@ def service(pin, rule, **kwargs):
     url = kwargs.get('url')
     auth_header = kwargs.get('auth_header')
 
-    return utils.get_service_response(url, auth_header)
+    return utils.call_service(url, auth_header)

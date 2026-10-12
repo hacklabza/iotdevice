@@ -198,6 +198,25 @@ def read_bmp180(pin, rule, **kwargs):
     }
 
 
+def read_bmp280(pin, rule, **kwargs):
+    """
+    Reads temperature, pressure, and altitude from a BMP280 sensor.
+    """
+    from drivers.bmp280 import BMP280
+
+    baseline = kwargs.get('baseline', 101325)
+    i2c_address = kwargs.get('i2c_address', 0x76)
+    decimal_places = kwargs.get('decimal_places', 1)
+
+    bmp280_sensor = BMP280(pin, i2c_address=i2c_address, baseline=baseline)
+
+    return {
+        'temperature': round(bmp280_sensor.temperature, decimal_places),
+        'pressure': round((bmp280_sensor.pressure / 100), decimal_places),
+        'altitude': round(bmp280_sensor.altitude, decimal_places),
+    }
+
+
 def read_sht30(pin, rule, **kwargs):
     """
     Reads temperature and humidity from an SHT30 sensor.

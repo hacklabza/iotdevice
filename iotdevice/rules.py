@@ -213,6 +213,9 @@ def read_bmp280(pin, rule, **kwargs):
     return {
         'temperature': round(bmp280_sensor.temperature, decimal_places),
         'pressure': round((bmp280_sensor.pressure / 100), decimal_places),
+        'sea_level_pressure': round(
+            (bmp280_sensor.sea_level_pressure / 100), decimal_places
+        ),
         'altitude': round(bmp280_sensor.altitude, decimal_places),
     }
 

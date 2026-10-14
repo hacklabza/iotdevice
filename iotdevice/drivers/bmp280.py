@@ -120,12 +120,12 @@ class BMP280:
         self,
         i2c_bus,
         i2c_address=0x76,
-        use_case=BMP280_CASE_HANDHELD_DYN,
+        use_case=BMP280_CASE_INDOOR,
         baseline=None,
     ):
         self._bmp_i2c = i2c_bus
         self._i2c_addr = i2c_address
-        self.baseline = baseline or 101325
+        self.baseline = baseline or 101325.0
 
         # read calibration data
         # < little-endian
@@ -261,6 +261,10 @@ class BMP280:
             p = ((p + var1 + var2) >> 8) + (self._P7 << 4)
             self._p = p / 256.0
         return self._p
+
+    @property
+    def sea_level_pressure(self):
+        return self.pressure / pow(1.0 - (self.altitude / 44330.0), 5.255)
 
     @property
     def altitude(self):
